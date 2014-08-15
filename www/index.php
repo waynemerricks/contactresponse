@@ -30,9 +30,9 @@
     <?php if($_SESSION['failedLogins'] < 3){ ?>
       <div id="login">
         <form method="post">
-          <input id="login" name="login" type="text" value=""></input>
-          <input id="password" name="password" type="password" value=""></input>
-          <input id="submit" type="submit" value="login"></input>
+          <label for="login">User Name:</label><input id="login" name="login" type="text" value=""></input><br>
+          <label for="password">Password:</label><input id="password" name="password" type="password" value=""></input><br>
+          <input id="submit" type="submit" value="login"></input><br>
         </form>
       </div>
     <?php } ?>
