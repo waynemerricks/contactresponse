@@ -19,6 +19,7 @@
 <html>
   <head>
     <title>CRS | Login</title>
+    <link rel="stylesheet" type="text/css" href="crs.css">
   </head>
   <body>
     <div id="error">
