@@ -1,6 +1,6 @@
 <?php
 
-  include('includes/sessions.php'); //Include SESSION stuff
+  include('includes/session.php'); //Include SESSION stuff
   include('includes/database.php'); //Include DB stuff
   include('includes/login.php'); //Include login functions
 

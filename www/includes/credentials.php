@@ -22,7 +22,7 @@
 
     $DB = NULL;
 
-    if($readWrite == 'read' || ($readWrite == 'write' && !isset($DB_WRITE))
+    if($readWrite == 'read' || ($readWrite == 'write' && !isset($DB_WRITE)))
       $DB = $DB_READ;
     else if($readWrite == 'write' && isset($DB_WRITE))
       $DB = $DB_WRITE;
