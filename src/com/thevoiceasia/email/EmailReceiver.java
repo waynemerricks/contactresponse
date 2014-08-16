@@ -22,7 +22,7 @@ public class EmailReceiver extends Thread{
 	/* STATIC SETTINGS */
 	private static final String MAIL_TYPE = "pop3"; //$NON-NLS-1$
 	private static final int EMAIL_CHECK_PERIOD = 60; //Time to check for emails in seconds
-	private static final Logger LOGGER = Logger.getLogger("com.thevoiceasia.email"); //$NON-NLS-1$
+	private static final Logger LOGGER = Logger.getLogger("com.thevoiceasia"); //$NON-NLS-1$
 	private static final Level LEVEL = Level.INFO;//Logging level of this class
 	private static final boolean DEBUG_MODE = true;
 	private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yy-MM-DD HH:mm:ss.SSS");
