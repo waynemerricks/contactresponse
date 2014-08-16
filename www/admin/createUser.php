@@ -18,10 +18,11 @@
   $invalidLoginPassword = FALSE;
 
   if(isset($_SESSION['canCreateUsers'], $_POST['login'],
-       $_POST['password']) && $_SESSION['canCreateUsers']){
+       $_POST['password'], $_POST['name'], $_POST['email']) &&
+       $_SESSION['canCreateUsers']){
 
     if(isAcceptableLogin($_POST['login']) && isAcceptablePassword(
-         $_POST['password'])){
+         $_POST['password']) && isAcceptableEmail($_POST['email'])){
 
       $mysqli = getDatabaseWrite();
 
@@ -69,8 +70,12 @@
     </div>
     <div id="login">
       <form method="post" action="createUser.php">
+        <label for="name">Full Name:</label>
+        <input id="name" name="name" type="text" value="" /><br>
+        <label for="email">Email Address:</label>
+        <input id="email" name="email" type="text" value="" /><br>
         <label for="login">User Name:</label>
-        <input id="userName" name="login" type="text" value="" /><br>
+        <input id="login" name="login" type="text" value="" /><br>
         <label for="password">Password:</label>
         <input id="password" name="password" type="password" value="" /><br>
         <input id="submit" type="submit" value="create" /><br>

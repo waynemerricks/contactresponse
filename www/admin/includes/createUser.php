@@ -30,5 +30,19 @@
     return $acceptable;
 
   }
+  
+  /**
+   * Checks to see if the email is valid
+   */
+  function isAcceptableEmail($email){
+
+    $acceptable = FALSE;
+
+    if(filter_var($email, FILTER_VALIDATE_EMAIL) !== FALSE)
+      $acceptable = TRUE;
+
+    return $acceptable;
+
+  }
 
 ?>
