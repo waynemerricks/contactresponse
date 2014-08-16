@@ -9,7 +9,7 @@
 
     $DB = getCredentials('read');
 
-    $mysqli = new $mysqli($DB['hostname'], $DB['username'], $DB['password'],
+    $mysqli = new mysqli($DB['hostname'], $DB['username'], $DB['password'],
                        $DB['database']);
 
     if($mysqli->connect_errno)
@@ -26,6 +26,9 @@
   function getDatabaseWrite(){
 
     $DB = getCredentials('write');
+
+    $mysqli = new mysqli($DB['hostname'], $DB['username'], $DB['password'],
+                       $DB['database']);
 
     if($mysqli->connect_errno)
       die('Failed to connect to MySQL: (' . $mysqli->connect_errno . ') '
