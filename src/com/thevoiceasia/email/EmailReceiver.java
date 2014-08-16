@@ -2,6 +2,11 @@ package com.thevoiceasia.email;
 
 /* GENERAL */
 import java.io.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.text.*;
 import java.util.*;
 import java.util.logging.Level;
@@ -20,16 +25,14 @@ import com.thevoiceasia.database.*;
 public class EmailReceiver extends Thread{
 
 	/* STATIC SETTINGS */
-	private static final String MAIL_TYPE = "pop3"; //$NON-NLS-1$
 	private static final int EMAIL_CHECK_PERIOD = 60; //Time to check for emails in seconds
 	private static final Logger LOGGER = Logger.getLogger("com.thevoiceasia"); //$NON-NLS-1$
 	private static final Level LEVEL = Level.INFO;//Logging level of this class
 	private static final boolean DEBUG_MODE = true;
-	private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yy-MM-DD HH:mm:ss.SSS");
 	
 	/* CLASS VARS */
 	private DatabaseHelper database = null;
-	private String MAIL_SERVER, MAIL_USER, MAIL_PASSWORD;
+	private String MAIL_SERVER, MAIL_USER, MAIL_PASSWORD, ARCHIVE_PATH;
 	
 	/**
 	 * Receives Email from the given email inbox (no subfolders)
@@ -40,9 +43,10 @@ public class EmailReceiver extends Thread{
 	 * @param mailHost Email Host
 	 * @param mailUser Email User
 	 * @param mailPass Email Password
+	 * @param emailStorePath Path to where email content should be archived
 	 */
 	public EmailReceiver(String dbHost, String dbUser, String dbPass, String dbBase, String mailHost,
-			String mailUser, String mailPass){
+			String mailUser, String mailPass, String emailStorePath){
 		
 		LOGGER.setLevel(LEVEL);
 		
@@ -55,51 +59,48 @@ public class EmailReceiver extends Thread{
 	}
 	
 	/**
-	 * Returns current date/time formatted as yy-MM-DD HH:mm:ss.SSS
-	 * @return
+	 * Runnable start point
 	 */
-	private String getNow(){
-	
-		return DATE_FORMAT.format(new Date());
-		
-	}
-	
 	public void run(){
 		
 		boolean run = true;
 		
-		LOGGER.info(getNow() + " ContactResponse-Importer: Started on inbox " + MAIL_USER); //$NON-NLS-1$
+		LOGGER.info("ContactResponse-Importer: Started on inbox " + MAIL_USER); //$NON-NLS-1$
 		
 		while(run){
 		
-			receiveEmail(MAIL_SERVER, MAIL_TYPE, MAIL_USER, MAIL_PASSWORD, 50);
+			database.connect();
+			
+			receiveEmail(MAIL_SERVER, MAIL_USER, MAIL_PASSWORD, 50);
+			
+			database.disconnect();
 			
 			try{
 				
-				LOGGER.info(getNow() + " ContactResponse-Importer: Sleeping..."); //$NON-NLS-1$
+				LOGGER.info("ContactResponse-Importer: Sleeping..."); //$NON-NLS-1$
 				sleep(EMAIL_CHECK_PERIOD * 1000);
 				
 			}catch(InterruptedException e){
 				
 				run = false;
-				LOGGER.warning(getNow() + " ContactResponse-Importer: Interrupted!");
+				LOGGER.warning("ContactResponse-Importer: Interrupted!");
 				
 			}
 			
 		}
 		
-		LOGGER.info(getNow() + " ContactResponse-Importer:  Stopped"); //$NON-NLS-1$
+		LOGGER.info("ContactResponse-Importer:  Stopped"); //$NON-NLS-1$
 		
 	}
 	
 	public static void main(String[] args){
 		
-		if(args.length == 7){
+		if(args.length == 8){
 			EmailReceiver emr = new EmailReceiver(args[0], args[1], args[2], args[3], args[4], args[5],
-					args[6]);
+					args[6], args[7]);
 			emr.start();
 		}else{
-			System.out.println("USAGE: DBHOST DBUSER DBPASS DBASE MAILHOST MAILUSER MAILPASS");
+			System.out.println("USAGE: DBHOST DBUSER DBPASS DBASE MAILHOST MAILUSER MAILPASS EMAILSTOREPATH");
 			System.exit(1);
 		}
 		
@@ -139,13 +140,12 @@ public class EmailReceiver extends Thread{
 	
 	/**
 	 * Receive Email loop
-	 * @param pop3Host
-	 * @param storeType
-	 * @param user
-	 * @param password
-	 * @param number
+	 * @param pop3Host email server host name
+	 * @param user email user
+	 * @param password email password
+	 * @param number max number of emails to read in one loop
 	 */
-	private void receiveEmail(String pop3Host, String storeType, String user, String password, int number) {
+	private void receiveEmail(String pop3Host, String user, String password, int number) {
 
 		try {
 			
@@ -173,7 +173,6 @@ public class EmailReceiver extends Thread{
 				
 				//Loop through emails adding to DB
 				LOGGER.info("Reading emails..."); //$NON-NLS-1$
-				SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss"); //$NON-NLS-1$
 				
 				for(int i = emailCount; i > 0; i--){
 					
@@ -272,7 +271,8 @@ public class EmailReceiver extends Thread{
 							if(message.isSet(Flags.Flag.DELETED))
 								LOGGER.finest("Marked for Deletion"); //$NON-NLS-1$
 							
-						}
+						}else
+							LOGGER.info(fromAddress + "/" + toAddress + "\n" + messageContent);
 						
 					}
 					
@@ -307,12 +307,172 @@ public class EmailReceiver extends Thread{
 
 	}
 
+	/**
+	 * Processes the email details and puts it into the messages table, archiving the content
+	 * to the message archive
+	 * @param sentDate Date email was sent
+	 * @param fromAddress Email address this was sent from
+	 * @param toAddress Address this email was sent to
+	 * @return true if processed successfully
+	 */
 	private boolean processEmail(Date sentDate, String fromAddress, String toAddress,
 			String messageContent) {
-		// TODO Put this message into the DB/File System as appropriate
 		
+		boolean success = false;
+		
+		String type = "E";
+		boolean sms = false;
+		if(fromAddress.contains("@sms.xpressms.com")){
+		
+			sms = true;
+			type = "S";
+			
+		}
+		
+		int existingContactId = getContactId(fromAddress, sms);
+		
+		String preview = messageContent.replaceAll("\n", "  ").replaceAll("\r", "");
+		
+		if(preview.length() > 50)
+			preview = preview.substring(0, 47) + "...";
+		
+		String SQL = "INSERT INTO `messages` (`owner`, `type`, `direction`, `preview`) VALUES (?, ?, ?, ?)";
+		
+		Connection mysql = database.getConnection();
+		PreparedStatement insertMessage = null;
+		ResultSet insertIDs = null;
+		
+		try{
+			
+			//Bind all variables to statement
+			insertMessage = mysql.prepareStatement(SQL, Statement.RETURN_GENERATED_KEYS);
+			insertMessage.setInt(1, existingContactId);
+			insertMessage.setString(2, type);
+			insertMessage.setString(3, "I");
+			insertMessage.setString(4, preview);
+			
+			//Execute it
+			if(insertMessage.execute()){
+			
+				LOGGER.finest("Successfully added message from " + fromAddress);
+				insertIDs = insertMessage.getGeneratedKeys();
+				
+				while(insertIDs.next())
+					success = writeMessageToArchive(insertIDs.getInt(1), messageContent);
+				
+				if(success)
+					LOGGER.finest("Successfully archived message from " + fromAddress);
+				else
+					LOGGER.severe("Failed to archive message from " + fromAddress);
+				
+			}
+			
+		}catch(SQLException e){
+			
+			e.printStackTrace();
+			LOGGER.severe("SQL Error while inserting message");
+			
+		}finally{
+			
+			if(insertIDs != null){
+            	try{
+            		insertIDs.close();
+            		insertIDs = null;
+            	}catch(Exception e){}
+            }
+            	
+            if(insertMessage != null){//Close Statement
+            	try{
+            		insertMessage.close();
+            		insertMessage = null;
+            	}catch(Exception e){}
+            }
+        	
+		}
+		
+		return success;
+		
+	}
+
+	private boolean writeMessageToArchive(int fileID, String messageContent) {
+		// TODO Auto-generated method stub
 		return false;
+	}
+
+	/**
+	 * 
+	 * @param fromAddress
+	 * @param smsMessage
+	 * @return
+	 */
+	private int getContactId(String fromAddress, boolean smsMessage) {
 		
+		int id = -1;
+		
+		String SQL = "SELECT `id` FROM `contacts` WHERE `email` = ?";
+		
+		if(smsMessage){
+			
+			SQL = "SELECT `id` FROM `contacts` WHERE `phone` LIKE ?";
+			fromAddress = "%" + fromAddress.split("@")[0];
+			
+		}
+		
+		Connection mysql = database.getConnection();
+		PreparedStatement selectContact = null;
+		ResultSet contactIDs = null;
+		
+		try{
+			
+			//Bind all variables to statement
+			selectContact = mysql.prepareStatement(SQL);
+			selectContact.setString(1, fromAddress);
+			
+			//Execute it
+			if(selectContact.execute()){
+			
+				contactIDs = selectContact.getResultSet();
+				
+				while(contactIDs.next())
+					id = contactIDs.getInt(1);
+				
+				if(id != -1)
+					LOGGER.finest("Found contact ID For: " + fromAddress);
+				else
+					id = createNewContact(fromAddress);
+				
+			}
+			
+		}catch(SQLException e){
+			
+			e.printStackTrace();
+			LOGGER.severe("SQL Error while looking up contact ID for " + fromAddress);
+			
+		}finally{
+			
+			if(contactIDs != null){
+            	try{
+            		contactIDs.close();
+            		contactIDs = null;
+            	}catch(Exception e){}
+            }
+            	
+            if(selectContact != null){//Close Statement
+            	try{
+            		selectContact.close();
+            		selectContact = null;
+            	}catch(Exception e){}
+            }
+        	
+		}
+		
+		return id;
+		
+	}
+
+	private int createNewContact(String fromAddress) {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 
 	/**
