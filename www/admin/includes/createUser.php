@@ -45,9 +45,38 @@
 
   }
 
-  function checkUserNameEmail($login, $email){
-    //TODO
-    return TRUE;
+  /**
+   * Sees if the given login/email exists
+   */
+  function checkUserNameEmail($mysqli, $login, $email){
+
+    $userExists = FALSE;
+    $sql = 'SELECT COUNT(*) FROM `users` WHERE `email` = ? OR `login_name` = ?';
+    $stmt = NULL;
+
+    if($stmt = $mysqli->prepare($sql)){
+
+      if($stmt->bind_param('ss',$email, $login)){
+
+        if($stmt->execute()){
+
+          $stmt->bind_result($count);
+
+          while($stmt->fetch())
+            $userExists = TRUE;
+
+        }else
+          die('Failed to execute check user statement');
+
+      }else
+        die('Failed to bind parameters for check user statement');
+
+      $stmt->close();
+
+    }else
+      die('Failed to prepare check user statement');
+
+    return $userExists;
 
   }
 

@@ -16,6 +16,7 @@
 
   $createdUser = FALSE;
   $invalidLoginPassword = FALSE;
+  $userExists = FALSE;
 
   if(isset($_SESSION['canCreateUsers'], $_POST['login'],
        $_POST['password'], $_POST['name'], $_POST['email']) &&
@@ -26,7 +27,7 @@
 
       $mysqli = getDatabaseWrite();
 
-      if(checkUserNameEmail($_POST['login_name'], $_POST['email'])){
+      if(!checkUserNameEmail($mysqli, $_POST['login'], $_POST['email'])){
 
         $sql = 'INSERT INTO `users` (`login_name`, `password`, `name`, `email`)
                 VALUES (?, ?, ?, ?)';
@@ -73,6 +74,10 @@
         User Names should be at least 8 characters long<br><br>
         Passwords should also be at least 8 characters long. They must contain 
         at least 1 number and 1 upper case letter.<br>
+      <?php } ?>
+      <?php if($userExists === TRUE){ ?>
+        This user already exists, please use a different email address or login
+        name.
       <?php } ?>
     </div>
     <div id="login">
