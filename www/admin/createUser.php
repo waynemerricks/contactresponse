@@ -2,6 +2,10 @@
 
   include('../includes/session.php');
 
+  //DEBUG 
+  $_SESSION['isAdmin'] = TRUE;
+  $_SESSION['canCreateUsers'] = TRUE;
+  
   if(!isset($_SESSION['isAdmin']))
     header('Location: ../index.php');//Not an admin so go away
   else if(!isset($_SESSION['canCreateUsers']))//Admin but can't create users
