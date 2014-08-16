@@ -3,15 +3,17 @@ package com.thevoiceasia.database;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.logging.Logger;
 
 public class DatabaseHelper {
 
+	/** STATICS **/
+	private static final Logger LOGGER = Logger.getLogger("com.thevoiceasia.database"); //$NON-NLS-1$
+	
+	/** CLASS VARS **/
 	private boolean connected = false;
 	private String host, database, user, password;
 	private Connection databaseConnection = null;
-	private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"); //$NON-NLS-1$
 	
 	public DatabaseHelper(String host, String database, String user, 
 			String password){
@@ -40,18 +42,12 @@ public class DatabaseHelper {
 							
 		} catch (SQLException e) {
 			
-			System.err.println("Error reconnecting to Database"); //$NON-NLS-1$
+			LOGGER.severe("Error reconnecting to Database"); //$NON-NLS-1$
 			e.printStackTrace();
 			
 		}
 		
 		return databaseConnection;
-		
-	}
-	
-	private String getTimeStamp(){
-		
-		return sdf.format(new Date());
 		
 	}
 	
@@ -74,16 +70,16 @@ public class DatabaseHelper {
 						"?user=" + user + "&password=" + password); //$NON-NLS-1$//$NON-NLS-2$ 						
 				
 				connected = true;
-				//System.out.println("Connected Successfully"); //$NON-NLS-1$
+				LOGGER.info("Connected to MySQL Database");
 				
 			}catch(SQLException e){
 				
-				System.err.println(getTimeStamp() + ": MySQL Connection Error"); //$NON-NLS-1$
+				LOGGER.severe("MySQL Connection Error"); //$NON-NLS-1$
 				e.printStackTrace();
 				
 			}catch(Exception e){
 				
-				System.err.println(getTimeStamp() + ": MySQL Driver Error"); //$NON-NLS-1$
+				LOGGER.severe("MySQL Driver Error"); //$NON-NLS-1$
 				e.printStackTrace();
 				
 			}
@@ -106,7 +102,7 @@ public class DatabaseHelper {
 				
 			} catch (SQLException e) {
 	
-				System.err.println(getTimeStamp() + ": Error disconnecting from Database"); //$NON-NLS-1$
+				LOGGER.warning("Error disconnecting from Database"); //$NON-NLS-1$
 				e.printStackTrace();
 				
 			}
