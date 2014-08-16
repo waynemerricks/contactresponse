@@ -93,6 +93,11 @@ public class EmailReceiver extends Thread{
 		
 	}
 	
+	/**
+	 * Entry point for Email Receiver
+	 * @param args 8 arguments expected:
+	 *   DB_HOST DB_USER DB_PASS DBASE MAIL_HOST MAIL_USER MAIL_PASS EMAIL_STORE_PATH
+	 */
 	public static void main(String[] args){
 		
 		if(args.length == 8){
@@ -394,16 +399,53 @@ public class EmailReceiver extends Thread{
 		
 	}
 
+	/**
+	 * Writes the message content to a text file in the ARCHIVE location
+	 * @param fileID name of file and message record id it relates to
+	 * @param messageContent Content to go in the file
+	 * @return true if we succeeded in writing the file
+	 */
 	private boolean writeMessageToArchive(int fileID, String messageContent) {
-		// TODO Auto-generated method stub
-		return false;
+		
+		boolean created = false;
+		
+		String path = ARCHIVE_PATH + System.getProperty("file.separator") + "fileID";
+		
+		File temp = new File(path);
+		
+		if(!temp.exists()){
+			
+			try{
+				
+				PrintWriter writer = new PrintWriter(path, "UTF-8");
+				writer.print(messageContent);
+				writer.close();
+				
+				created = true;
+				
+			}catch(UnsupportedEncodingException e){
+				
+				e.printStackTrace();
+				LOGGER.severe("Can't encode UTF8 file for " + path);
+				
+			}catch(FileNotFoundException e){
+				
+				e.printStackTrace();
+				LOGGER.severe("Can't write file " + path);
+				
+			}
+			
+		}
+		
+		return created;
+		
 	}
 
 	/**
-	 * 
-	 * @param fromAddress
-	 * @param smsMessage
-	 * @return
+	 * Gets a contact id from the contacts table, if no contact exists, it will be created
+	 * @param fromAddress Address to lookup
+	 * @param smsMessage if this is an sms message it searches by phone and not email
+	 * @return id of existing or new contact
 	 */
 	private int getContactId(String fromAddress, boolean smsMessage) {
 		
@@ -439,7 +481,7 @@ public class EmailReceiver extends Thread{
 				if(id != -1)
 					LOGGER.finest("Found contact ID For: " + fromAddress);
 				else
-					id = createNewContact(fromAddress);
+					id = createNewContact(fromAddress, smsMessage);
 				
 			}
 			
@@ -470,9 +512,69 @@ public class EmailReceiver extends Thread{
 		
 	}
 
-	private int createNewContact(String fromAddress) {
-		// TODO Auto-generated method stub
-		return 0;
+	/**
+	 * Creates a new contact
+	 * @param fromAddress either phone or sms number to create with
+	 * @param smsMessage if sms then we'll insert the fromAddress into the phone field
+	 * else we'll just enter it as an email address
+	 * @return id of inserted contact record
+	 */
+	private int createNewContact(String fromAddress, boolean smsMessage) {
+		
+		int id = -1;
+		
+		String SQL = "INSERT INTO `contacts` (`email`) VALUES (?)";
+		
+		if(smsMessage)
+			SQL = "INSERT INTO `contacts` (`phone`) VALUES (?)";
+		
+		LOGGER.info("Creating new contact for " + fromAddress);
+		
+		Connection mysql = database.getConnection();
+		PreparedStatement insertContact = null;
+		ResultSet contactIDs = null;
+		
+		try{
+			
+			//Bind all variables to statement
+			insertContact = mysql.prepareStatement(SQL, Statement.RETURN_GENERATED_KEYS);
+			insertContact.setString(1, fromAddress);
+			
+			//Execute it
+			if(insertContact.execute()){
+			
+				contactIDs = insertContact.getGeneratedKeys();
+				
+				while(contactIDs.next())
+					id = contactIDs.getInt(1);
+				
+			}
+			
+		}catch(SQLException e){
+			
+			e.printStackTrace();
+			LOGGER.severe("SQL Error while creating new contact for " + fromAddress);
+			
+		}finally{
+			
+			if(contactIDs != null){
+            	try{
+            		contactIDs.close();
+            		contactIDs = null;
+            	}catch(Exception e){}
+            }
+            	
+            if(insertContact != null){//Close Statement
+            	try{
+            		insertContact.close();
+            		insertContact = null;
+            	}catch(Exception e){}
+            }
+        	
+		}
+		
+		return id;
+		
 	}
 
 	/**
