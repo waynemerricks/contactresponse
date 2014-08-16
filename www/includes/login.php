@@ -35,6 +35,8 @@
 
       }
 
+      $stmt->close();
+
     }else{
 
       die('Failed to get login info');

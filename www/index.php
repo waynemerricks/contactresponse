@@ -13,6 +13,8 @@
     //Verify User Password
     checkLogin($mysqli, $_POST['login'], $_POST['password']);
 
+    $mysqli->close();
+
   }
 
 ?>
