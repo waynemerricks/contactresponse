@@ -45,4 +45,10 @@
 
   }
 
+  function checkUserNameEmail($login, $email){
+    //TODO
+    return TRUE;
+
+  }
+
 ?>

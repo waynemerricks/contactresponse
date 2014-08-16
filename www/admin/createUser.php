@@ -26,24 +26,31 @@
 
       $mysqli = getDatabaseWrite();
 
-      $sql = 'INSERT INTO `users` (`login_name`, `password`) VALUES (?, ?)';
+      if(checkUserNameEmail($_POST['login_name'], $_POST['email'])){
 
-      $stmt = NULL;
+        $sql = 'INSERT INTO `users` (`login_name`, `password`, `name`, `email`)
+                VALUES (?, ?, ?, ?)';
 
-      if($stmt = $mysqli->prepare($sql)){
-        if($stmt->bind_param('ss',$_POST['login'], 
-             password_hash($_POST['password'],PASSWORD_DEFAULT))){
+        $stmt = NULL;
 
-          if(!$stmt->execute())
-            die('Execute Error: ' . $stmt->error);
-          else
-            $createdUser = TRUE;
+        if($stmt = $mysqli->prepare($sql)){
+          if($stmt->bind_param('ssss',$_POST['login'], 
+               password_hash($_POST['password'],PASSWORD_DEFAULT), $_POST['name'],
+               $_POST['email'])){
+
+            if(!$stmt->execute())
+              die('Execute Error: ' . $stmt->error);
+            else
+              $createdUser = TRUE;
+
+          }else
+            die('Bind Error: ' . $stmt->error);
 
         }else
-          die('Bind Error: ' . $stmt->error);
+          die('Prepare Error: ' . $mysqli->error);
 
       }else
-        die('Prepare Error: ' . $mysqli->error);
+        $userExists = TRUE;
 
     }else
       $invalidLoginPassword = TRUE;
