@@ -20,9 +20,27 @@ table.inbox {
 
 }
 
-table.inbox th.centre {
+td.fullWidth {
+
+  width: 100%;
+
+}
+
+td.icon {
+
+  width: 40px;
+
+}
+
+th.centre {
 
   text-align: center;
+
+}
+
+th.left {
+
+  text-align: left;
 
 }
 
@@ -47,7 +65,7 @@ table.inbox td {
 
 }
 
-table.inbox td.centre {
+td.centre {
 
   text-align: center;
 
