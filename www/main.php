@@ -1,6 +1,7 @@
 <?php
 
   include('includes/session.php'); //Include SESSION stuff
+  include('includes/loggedIn.php'); //Include logged in check
   include('includes/database.php'); //Include DB stuff
 
 ?>
@@ -10,6 +11,6 @@
     <link rel="stylesheet" type="text/css" href="crs.css">
   </head>
   <body>
-    Place Holder Logged in successfully
+    Place Holder Logged in successfully: User ID <?php echo $_SESSION['userid']; ?>
   </body>
 </html>
