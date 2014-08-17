@@ -2,7 +2,7 @@
 --
 -- Host: localhost    Database: crs
 -- ------------------------------------------------------
--- Server version	5.5.38-0ubuntu0.12.04.1
+-- Server version	5.5.38-0ubuntu0.14.04.1
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -31,15 +31,6 @@ CREATE TABLE `contact_fields` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `contact_fields`
---
-
-LOCK TABLES `contact_fields` WRITE;
-/*!40000 ALTER TABLE `contact_fields` DISABLE KEYS */;
-/*!40000 ALTER TABLE `contact_fields` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `contact_values_large`
 --
 
@@ -54,15 +45,6 @@ CREATE TABLE `contact_values_large` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `contact_values_large`
---
-
-LOCK TABLES `contact_values_large` WRITE;
-/*!40000 ALTER TABLE `contact_values_large` DISABLE KEYS */;
-/*!40000 ALTER TABLE `contact_values_large` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `contact_values_medium`
@@ -81,15 +63,6 @@ CREATE TABLE `contact_values_medium` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `contact_values_medium`
---
-
-LOCK TABLES `contact_values_medium` WRITE;
-/*!40000 ALTER TABLE `contact_values_medium` DISABLE KEYS */;
-/*!40000 ALTER TABLE `contact_values_medium` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `contact_values_small`
 --
 
@@ -106,15 +79,6 @@ CREATE TABLE `contact_values_small` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `contact_values_small`
---
-
-LOCK TABLES `contact_values_small` WRITE;
-/*!40000 ALTER TABLE `contact_values_small` DISABLE KEYS */;
-/*!40000 ALTER TABLE `contact_values_small` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `contacts`
 --
 
@@ -123,26 +87,18 @@ DROP TABLE IF EXISTS `contacts`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `contacts` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `first_name` varchar(25) NOT NULL DEFAULT 'Unknown',
-  `last_name` varchar(25) NOT NULL DEFAULT 'Unknown',
+  `name` varchar(50) NOT NULL DEFAULT 'Unknown',
   `gender` char(1) NOT NULL DEFAULT 'U',
   `language_id` int(11) NOT NULL DEFAULT '1',
+  `phone` varchar(20) DEFAULT NULL,
+  `email` varchar(50) DEFAULT NULL,
   `photo` char(1) NOT NULL DEFAULT 'N',
   `assigned_user_id` int(11) DEFAULT NULL,
-  `created` timestamp NOT NULL DEFAULT '2000-01-01 00:00:00',
-  `updated` timestamp NOT NULL DEFAULT '2000-01-01 00:00:00',
+  `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=101 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `contacts`
---
-
-LOCK TABLES `contacts` WRITE;
-/*!40000 ALTER TABLE `contacts` DISABLE KEYS */;
-/*!40000 ALTER TABLE `contacts` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `languages`
@@ -159,15 +115,6 @@ CREATE TABLE `languages` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `languages`
---
-
-LOCK TABLES `languages` WRITE;
-/*!40000 ALTER TABLE `languages` DISABLE KEYS */;
-/*!40000 ALTER TABLE `languages` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `messages`
 --
 
@@ -177,24 +124,16 @@ DROP TABLE IF EXISTS `messages`;
 CREATE TABLE `messages` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `owner` int(11) NOT NULL DEFAULT '1',
+  `assigned_user` int(11) NOT NULL DEFAULT '0',
   `type` char(1) NOT NULL DEFAULT 'G',
   `direction` char(1) NOT NULL DEFAULT 'U',
   `created_by` int(11) NOT NULL DEFAULT '0',
-  `created` timestamp NOT NULL DEFAULT '2014-08-13 23:00:00',
+  `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `status` char(1) NOT NULL DEFAULT 'D',
   `preview` varchar(50) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=1246 DEFAULT CHARSET=utf8 COMMENT='utf8_general_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `messages`
---
-
-LOCK TABLES `messages` WRITE;
-/*!40000 ALTER TABLE `messages` DISABLE KEYS */;
-/*!40000 ALTER TABLE `messages` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `permissions`
@@ -209,17 +148,8 @@ CREATE TABLE `permissions` (
   `friendly_name` varchar(25) DEFAULT NULL,
   `description` text NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `permissions`
---
-
-LOCK TABLES `permissions` WRITE;
-/*!40000 ALTER TABLE `permissions` DISABLE KEYS */;
-/*!40000 ALTER TABLE `permissions` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `role_members`
@@ -233,17 +163,8 @@ CREATE TABLE `role_members` (
   `role_id` int(11) NOT NULL DEFAULT '1',
   `user_id` int(11) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `role_members`
---
-
-LOCK TABLES `role_members` WRITE;
-/*!40000 ALTER TABLE `role_members` DISABLE KEYS */;
-/*!40000 ALTER TABLE `role_members` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `roles`
@@ -258,17 +179,8 @@ CREATE TABLE `roles` (
   `description` text NOT NULL,
   `active_permissions` text NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `roles`
---
-
-LOCK TABLES `roles` WRITE;
-/*!40000 ALTER TABLE `roles` DISABLE KEYS */;
-/*!40000 ALTER TABLE `roles` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `stats`
@@ -284,15 +196,6 @@ CREATE TABLE `stats` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `stats`
---
-
-LOCK TABLES `stats` WRITE;
-/*!40000 ALTER TABLE `stats` DISABLE KEYS */;
-/*!40000 ALTER TABLE `stats` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `users`
 --
 
@@ -305,18 +208,11 @@ CREATE TABLE `users` (
   `email` varchar(50) NOT NULL DEFAULT '',
   `active` char(1) NOT NULL DEFAULT 'N',
   `max_contacts` int(11) NOT NULL DEFAULT '50',
+  `login_name` varchar(50) NOT NULL DEFAULT '',
+  `password` varchar(250) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `users`
---
-
-LOCK TABLES `users` WRITE;
-/*!40000 ALTER TABLE `users` DISABLE KEYS */;
-/*!40000 ALTER TABLE `users` ENABLE KEYS */;
-UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -327,4 +223,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2014-08-15 21:58:46
+-- Dump completed on 2014-08-17 23:07:12
