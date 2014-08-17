@@ -1,0 +1,36 @@
+table.contact {
+
+  border-collapse:collapse;
+  border:1px solid #000000;
+
+}
+
+table.contact th {
+
+  text-align: left;
+
+  background-color:#005fbf;
+  border:0px solid #000000;
+  text-align:center;
+  border-width:0px 0px 1px 1px;
+  font-size:14px;
+  font-family:Arial;
+  font-weight:bold;
+  color:#ffffff;
+  padding: 5px;
+
+}
+
+table.contact td {
+
+  border:1px solid #000000;
+
+}
+
+table.contact tr a {
+
+  display: block;
+  text-decoration: none;
+  color: black;
+
+}
