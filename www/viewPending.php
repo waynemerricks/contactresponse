@@ -8,11 +8,14 @@
   include('includes/loggedIn.php'); //Include logged in check
   include('includes/messages.php'); //Functions for getting messages
   include('includes/contact.php'); //Functions for getting a contact
+  include('includes/user.php'); //Functions relating to logged in user
+
   $pendingMessages = array();
 
   if(isset($_GET['id'])){
 
-    $pendingMessages = getPendingMessages(getUserId(), $_GET['id'], $mysqli);
+    $pendingMessages = getPendingMessages(getUserId(), $_GET['id'], 
+        isDefaultHelper(), $mysqli);
     $contact = getContact($_GET['id']);
 
   }else
@@ -29,6 +32,7 @@
   <head>
     <title>CRS | <?php echo $contact['name']; ?></title>
     <link rel="stylesheet" type="text/css" href="crs.css">
+    <link rel="stylesheet" type="text/css" href="crs_viewPending.css">
   </head>
   <body>
     <div class="contact">
@@ -36,36 +40,34 @@
        <tr>
          <td rowspan="4"><img src="images/nophoto.png" /></td>
          <th>Name:</th>
-         <td><?php echo $contact['name']; ?></td>
+         <td class="fullWidth"><?php echo $contact['name']; ?></td>
        </tr>
        <tr>
          <th>Location:</th>
-         <td><?php echo $contact['location']; ?></td>
+         <td class="fullWidth"><?php echo $contact['location']; ?></td>
        </tr>
        <tr>
          <th>Gender:</th>
-         <td><?php echo $contact['gender']; ?></td>
+         <td class="fullWidth"><?php echo $contact['gender']; ?></td>
        </tr>
        <tr>
          <th>Notes:</th>
-         <td><?php echo $contact['notes']; ?></td>
+         <td class="fullWidth"><?php echo $contact['notes']; ?></td>
        </tr>
       </table>
     </div>
     <div class="pending">
       <table class="pending">
-        <tr class="header">
-          <th>&nbsp;</th>
-          <th class="centre">Date</th>
-          <th class="spacer">&nbsp;</th>
-        </tr>
         <?php if(sizeof($pendingMessages) == 0){ ?>
-          <tr><td colspan="3">There are no messages for this contact</td></tr>
+          <tr><td class="fullWidth" colspan="3">There are no messages for this contact</td></tr>
         <?php
           } else {
 
+            $mailToID = 0;
+
             for($i = 0; $i < sizeof($pendingMessages); $i++){ 
 
+              $mailToID = $pendingMessages[$i]['id'];
               $src = 'images/generic.png';
 
               if($pendingMessages[$i]['type'] == 'E')
@@ -79,13 +81,13 @@
             <td class="icon">
               <img class="icon" src="<?php echo $src; ?>" />
             </td>
-            <td colspan="2" class="time centre">
+            <td colspan="2" class="time fullWidth">
               <?php echo $pendingMessages[$i]['date']; ?>
             </td>
           </tr>
           <tr class="message">
-            <td colspan="3" class="message">
-              <?php echo $pendingMessages[$i]['message']; ?>
+            <td colspan="3" class="message fullWidth">
+              <?php echo nl2br($pendingMessages[$i]['message']); ?><hr>
             </td>
           </tr>
         <?php
@@ -93,6 +95,9 @@
           }
         ?>
       </table>
+    </div>
+    <div class="reply">
+      <a href="mailto:<?php echo $mailToID; ?>@crs.internal">Reply By Email</a>
     </div>
   </body>
 </html>
