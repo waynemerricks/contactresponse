@@ -7,7 +7,7 @@
    */
   if(!isset($_SESSION['userid']))
     header('Location: index.php');
-  else{
+  else if(!isset($_SESSION['user'])){//Only do this if we don't have permissions already
 
     //Get User Abilities
     $user = array();
