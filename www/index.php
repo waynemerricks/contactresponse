@@ -4,7 +4,7 @@
   include('includes/database.php'); //Include DB stuff
   include('includes/login.php'); //Include login functions
 
-  if(!isset($_SESSION['failedLogins'])))
+  if(!isset($_SESSION['failedLogins']))
     $_SESSION['failedLogins'] = 0;
 
   $loginError = FALSE;//Flag for failed to login or not
