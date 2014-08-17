@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.*;
 import java.util.*;
+import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -28,7 +29,7 @@ public class EmailReceiver extends Thread{
 	private static final int EMAIL_CHECK_PERIOD = 60; //Time to check for emails in seconds
 	private static final Logger LOGGER = Logger.getLogger("com.thevoiceasia"); //$NON-NLS-1$
 	private static final Level LEVEL = Level.INFO;//Logging level of this class
-	private static final boolean DEBUG_MODE = true;
+	private static final boolean DEBUG_MODE = false;
 	
 	/* CLASS VARS */
 	private DatabaseHelper database = null;
@@ -48,13 +49,33 @@ public class EmailReceiver extends Thread{
 	public EmailReceiver(String dbHost, String dbUser, String dbPass, String dbBase, String mailHost,
 			String mailUser, String mailPass, String emailStorePath){
 		
-		LOGGER.setLevel(LEVEL);
-		
 		database = new DatabaseHelper(dbHost, dbBase, dbUser, dbPass);
 		
 		MAIL_SERVER = mailHost;
 		MAIL_USER = mailUser;
 		MAIL_PASSWORD = mailPass;
+		ARCHIVE_PATH = emailStorePath;
+		
+		setupLogging();
+		
+	}
+	
+	/**
+	 * Set the Logger object
+	 */
+	private void setupLogging(){
+		
+		LOGGER.setLevel(LEVEL);
+		
+		try{
+			
+			LOGGER.addHandler(new FileHandler("contactresponseincoming.log")); //$NON-NLS-1$
+			
+		}catch(IOException e){
+			
+			e.printStackTrace();
+			
+		}
 		
 	}
 	
@@ -77,7 +98,7 @@ public class EmailReceiver extends Thread{
 			
 			try{
 				
-				LOGGER.info("ContactResponse-Importer: Sleeping..."); //$NON-NLS-1$
+				LOGGER.finest("ContactResponse-Importer: Sleeping..."); //$NON-NLS-1$
 				sleep(EMAIL_CHECK_PERIOD * 1000);
 				
 			}catch(InterruptedException e){
@@ -162,7 +183,7 @@ public class EmailReceiver extends Thread{
 
 			URLName url = new URLName("pop3", pop3Host, 110, "", user, password);  //$NON-NLS-1$//$NON-NLS-2$
 			POP3Store emailStore = (POP3Store) emailSession.getStore(url);
-			LOGGER.info("Connecting to server " + pop3Host + " as " + user); //$NON-NLS-1$ //$NON-NLS-2$
+			LOGGER.finest("Connecting to server " + pop3Host + " as " + user); //$NON-NLS-1$ //$NON-NLS-2$
 			emailStore.connect(user, password);
 			LOGGER.finest("Connected..."); //$NON-NLS-1$
 			
@@ -177,7 +198,7 @@ public class EmailReceiver extends Thread{
 			if(emailCount > 0){
 				
 				//Loop through emails adding to DB
-				LOGGER.info("Reading emails..."); //$NON-NLS-1$
+				LOGGER.info("Reading " + emailCount + " emails..."); //$NON-NLS-1$
 				
 				for(int i = emailCount; i > 0; i--){
 					
@@ -247,6 +268,22 @@ public class EmailReceiver extends Thread{
 									text = msgContent.getBodyPart(j).getContent().toString();
 								else if(msgContent.getBodyPart(j).getContentType().startsWith("text/html")) //$NON-NLS-1$
 									html = msgContent.getBodyPart(j).getContent().toString();
+								else if(msgContent.getBodyPart(j).getContentType().startsWith("multipart/alternative")){
+									
+									Multipart mp = (Multipart)msgContent.getBodyPart(j).getContent();
+									
+									for(int k = 0; k < mp.getCount(); k++){
+										
+										Part p = mp.getBodyPart(k);
+										
+										if(p.isMimeType("text/plain"))
+											text = p.getContent().toString();
+										else if(p.isMimeType("text/html"))
+											html = p.getContent().toString();
+										
+									}
+								}else
+									LOGGER.finest(msgContent.getBodyPart(j).getContentType());
 								
 							}
 							
@@ -268,13 +305,18 @@ public class EmailReceiver extends Thread{
 							 * toAddress: Email Address of original recipient
 							 * fromAddress: Email Address of person who sent this message 
 							 */
-							if(processEmail(headerDate, fromAddress, toAddress, messageContent))//Finished so mark message for deletion
-								message.setFlag(Flags.Flag.DELETED, true);
-							else
-								message.setFlag(Flags.Flag.SEEN, true);
-						
-							if(message.isSet(Flags.Flag.DELETED))
-								LOGGER.finest("Marked for Deletion"); //$NON-NLS-1$
+							if(messageContent != null){
+								
+								if(processEmail(headerDate, fromAddress, toAddress, messageContent))//Finished so mark message for deletion
+									message.setFlag(Flags.Flag.DELETED, true);
+								else
+									message.setFlag(Flags.Flag.SEEN, true);
+								
+								if(message.isSet(Flags.Flag.DELETED))
+									LOGGER.finest("Marked for Deletion"); //$NON-NLS-1$
+								
+							}else
+								LOGGER.warning("Unable to get message content for " + fromAddress);
 							
 						}else
 							LOGGER.info(fromAddress + "/" + toAddress + "\n" + messageContent);
@@ -283,10 +325,10 @@ public class EmailReceiver extends Thread{
 					
 				}
 				
-				LOGGER.info("Finished reading emails"); //$NON-NLS-1$
+				LOGGER.finest("Finished reading emails"); //$NON-NLS-1$
 				
-			}
-			
+			}else
+				LOGGER.finest("Inbox Empty, nothing to do");
 			
 			LOGGER.finest("Closing connections..."); //$NON-NLS-1$
 			emailFolder.close(true);
@@ -327,6 +369,7 @@ public class EmailReceiver extends Thread{
 		
 		String type = "E";
 		boolean sms = false;
+		
 		if(fromAddress.contains("@sms.xpressms.com")){
 		
 			sms = true;
@@ -357,13 +400,19 @@ public class EmailReceiver extends Thread{
 			insertMessage.setString(4, preview);
 			
 			//Execute it
-			if(insertMessage.execute()){
+			int rows = insertMessage.executeUpdate();
+			
+			if(rows > 0){
 			
 				LOGGER.finest("Successfully added message from " + fromAddress);
 				insertIDs = insertMessage.getGeneratedKeys();
 				
-				while(insertIDs.next())
-					success = writeMessageToArchive(insertIDs.getInt(1), messageContent);
+				while(insertIDs.next()){
+				
+					int id = insertIDs.getInt(1);
+					success = writeMessageToArchive(id, messageContent);
+				
+				}
 				
 				if(success)
 					LOGGER.finest("Successfully archived message from " + fromAddress);
@@ -409,31 +458,38 @@ public class EmailReceiver extends Thread{
 		
 		boolean created = false;
 		
-		String path = ARCHIVE_PATH + System.getProperty("file.separator") + "fileID";
+		String path = ARCHIVE_PATH + System.getProperty("file.separator") + fileID;
 		
 		File temp = new File(path);
 		
-		if(!temp.exists()){
-			
-			try{
+		try {
+			if(!temp.exists() && temp.createNewFile()){
 				
-				PrintWriter writer = new PrintWriter(path, "UTF-8");
-				writer.print(messageContent);
-				writer.close();
-				
-				created = true;
-				
-			}catch(UnsupportedEncodingException e){
-				
-				e.printStackTrace();
-				LOGGER.severe("Can't encode UTF8 file for " + path);
-				
-			}catch(FileNotFoundException e){
-				
-				e.printStackTrace();
-				LOGGER.severe("Can't write file " + path);
+				try{
+					
+					PrintWriter writer = new PrintWriter(path, "UTF-8");
+					writer.print(messageContent);
+					writer.close();
+					
+					created = true;
+					
+				}catch(UnsupportedEncodingException e){
+					
+					e.printStackTrace();
+					LOGGER.severe("Can't encode UTF8 file for " + path);
+					
+				}catch(FileNotFoundException e){
+					
+					e.printStackTrace();
+					LOGGER.severe("Can't write file " + path);
+					
+				}
 				
 			}
+		} catch (IOException e) {
+			
+			e.printStackTrace();
+			LOGGER.severe("Can't create new file " + path);
 			
 		}
 		
@@ -541,7 +597,9 @@ public class EmailReceiver extends Thread{
 			insertContact.setString(1, fromAddress);
 			
 			//Execute it
-			if(insertContact.execute()){
+			int rows = insertContact.executeUpdate();
+			
+			if(rows > 0){
 			
 				contactIDs = insertContact.getGeneratedKeys();
 				
