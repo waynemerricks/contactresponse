@@ -34,6 +34,7 @@ public class EmailReceiver extends Thread{
 	/* CLASS VARS */
 	private DatabaseHelper database = null;
 	private String MAIL_SERVER, MAIL_USER, MAIL_PASSWORD, ARCHIVE_PATH;
+	private boolean archiveValid = false;
 	
 	/**
 	 * Receives Email from the given email inbox (no subfolders)
@@ -55,6 +56,11 @@ public class EmailReceiver extends Thread{
 		MAIL_USER = mailUser;
 		MAIL_PASSWORD = mailPass;
 		ARCHIVE_PATH = emailStorePath;
+	
+		File directory = new File(ARCHIVE_PATH);
+		
+		if(directory.exists() && directory.isDirectory() && directory.canWrite())
+			archiveValid = true;
 		
 		setupLogging();
 		
@@ -115,6 +121,17 @@ public class EmailReceiver extends Thread{
 	}
 	
 	/**
+	 * Flag that indicates whether the archive for this object is valid and
+	 * has write permissions
+	 * @return true if all is good, false if things are bad
+	 */
+	public boolean isValidArchive(){
+		
+		return archiveValid;
+		
+	}
+	
+	/**
 	 * Entry point for Email Receiver
 	 * @param args 8 arguments expected:
 	 *   DB_HOST DB_USER DB_PASS DBASE MAIL_HOST MAIL_USER MAIL_PASS EMAIL_STORE_PATH
@@ -124,6 +141,12 @@ public class EmailReceiver extends Thread{
 		if(args.length == 8){
 			EmailReceiver emr = new EmailReceiver(args[0], args[1], args[2], args[3], args[4], args[5],
 					args[6], args[7]);
+			
+			if(!emr.isValidArchive()){
+				System.out.println("Email Store Path invalid, doesn't exist or has no write permissions: " + args[7]);
+				System.exit(1);
+			}
+				
 			emr.start();
 		}else{
 			System.out.println("USAGE: DBHOST DBUSER DBPASS DBASE MAILHOST MAILUSER MAILPASS EMAILSTOREPATH");
@@ -253,48 +276,19 @@ public class EmailReceiver extends Thread{
 						
 						//Read message content and pick out email, name, content
 						//and referrer so we know what form was used
-						String html = null;
-						String text = null;
+						String messageContent = null;
+						String subject = message.getSubject();
+						
+						if(subject == null)
+							subject = "";
 						
 						if(message.getContent() instanceof MimeMultipart){
 							
 							MimeMultipart msgContent = (MimeMultipart)message.getContent();
-							
-							int mimeParts = msgContent.getCount();
-							
-							for(int j = 0; j < mimeParts; j++){
-								
-								if(msgContent.getBodyPart(j).getContentType().startsWith("text/plain")) //$NON-NLS-1$
-									text = msgContent.getBodyPart(j).getContent().toString();
-								else if(msgContent.getBodyPart(j).getContentType().startsWith("text/html")) //$NON-NLS-1$
-									html = msgContent.getBodyPart(j).getContent().toString();
-								else if(msgContent.getBodyPart(j).getContentType().startsWith("multipart/alternative")){
-									
-									Multipart mp = (Multipart)msgContent.getBodyPart(j).getContent();
-									
-									for(int k = 0; k < mp.getCount(); k++){
-										
-										Part p = mp.getBodyPart(k);
-										
-										if(p.isMimeType("text/plain"))
-											text = p.getContent().toString();
-										else if(p.isMimeType("text/html"))
-											html = p.getContent().toString();
-										
-									}
-								}else
-									LOGGER.finest(msgContent.getBodyPart(j).getContentType());
-								
-							}
+							messageContent = prefixSubject(getMessageContent(msgContent), subject);
 							
 						}else
-							text = message.getContent().toString();
-						
-						String messageContent = text;
-						
-						//Use plain text if possible else fallback to html
-						if(messageContent == null)
-							messageContent = html;
+							messageContent = prefixSubject(message.getContent().toString(), subject);
 						
 						//All messages in inbox should be processed and then deleted
 						if(!DEBUG_MODE){
@@ -311,7 +305,7 @@ public class EmailReceiver extends Thread{
 									message.setFlag(Flags.Flag.DELETED, true);
 								else
 									message.setFlag(Flags.Flag.SEEN, true);
-								
+									
 								if(message.isSet(Flags.Flag.DELETED))
 									LOGGER.finest("Marked for Deletion"); //$NON-NLS-1$
 								
@@ -352,6 +346,94 @@ public class EmailReceiver extends Thread{
 			
 		}
 
+	}
+
+	/**
+	 * Prefix subject as first line of plain text
+	 * @param text message content
+	 * @param subject subject of message
+	 * @return prepended text S:<subject goes here>\n<Message Content goes here>
+	 */
+	private String prefixSubject(String text, String subject) {
+		
+		if(text != null)
+			text = text.trim();
+		else
+			text = "";
+		
+		subject = subject.trim();
+		
+		//Prefix with subject if applicable
+		if(subject.length() > 0)
+			text = "S:" + subject + "\n" + text;
+			
+		return text;
+		
+	}
+
+	/**
+	 * Gets plain text from a multipart message
+	 * @param msgContent MultiPart Message to check
+	 * @return plain text of message
+	 */
+	private String getMessageContent(MimeMultipart msgContent) {
+		
+		String text = null;
+		String html = null;
+		
+		try{
+			
+			int messagePartCount = msgContent.getCount();
+			boolean found = false;
+			int i = 0;
+			
+			while(i < messagePartCount && !found){//Loop through message sections
+			
+				Part messageBody = msgContent.getBodyPart(i);
+					
+				if(messageBody.isMimeType("text/plain")){
+						
+					text = messageBody.getContent().toString();
+					found = true;
+						
+				}else if(text == null && html == null){
+					
+					if(messageBody.isMimeType("text/html"))
+						html = messageBody.getContent().toString();
+					else if(messageBody.isMimeType("multipart/alternative")){
+						
+						text = getMessageContent((MimeMultipart)messageBody.getContent());
+						found = true;
+						
+					}
+						
+				}
+				
+				i++;
+					
+			}
+				
+			if(!found && html != null){//if we didn't find plain text but we have html use it
+					
+				text = html;
+				found = true;
+					
+			}
+			
+		}catch(MessagingException e){
+			
+			e.printStackTrace();
+			LOGGER.warning("MessagingException");
+			
+		}catch(IOException e){
+			
+			LOGGER.warning("Error getting message content"); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}
+		
+		return text;
+		
 	}
 
 	/**
@@ -411,6 +493,13 @@ public class EmailReceiver extends Thread{
 				
 					int id = insertIDs.getInt(1);
 					success = writeMessageToArchive(id, messageContent);
+					
+					if(!success){
+						
+						LOGGER.warning("Error writing to archive, removing message from database: " + fromAddress);
+						removeMessageFromDatabase(id);
+						
+					}
 				
 				}
 				
@@ -445,6 +534,45 @@ public class EmailReceiver extends Thread{
 		}
 		
 		return success;
+		
+	}
+
+	/**
+	 * Deletes a message from the message table.
+	 * Called when writeToArchive() fails so we don't have a
+	 * message in the table that doesn't exist in archive
+	 * @param id id to delete
+	 */
+	private void removeMessageFromDatabase(int id) {
+		
+		LOGGER.info("Deleting message ID: " + id);
+		String SQL = "DELETE FROM `messages` WHERE `id` = " + id;
+		
+		Connection mysql = database.getConnection();
+		Statement deleteMessage = null;
+		
+		try{
+			
+			deleteMessage = mysql.createStatement();
+			
+			//Execute it
+			deleteMessage.executeUpdate(SQL);
+			
+		}catch(SQLException e){
+			
+			e.printStackTrace();
+			LOGGER.severe("SQL Error while inserting message");
+			
+		}finally{
+			
+			if(deleteMessage != null){//Close Statement
+            	try{
+            		deleteMessage.close();
+            		deleteMessage = null;
+            	}catch(Exception e){}
+            }
+        	
+		}
 		
 	}
 
