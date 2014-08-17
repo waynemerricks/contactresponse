@@ -80,4 +80,35 @@
 
   }
 
+  /**
+   * Checks $_SESSION['user']['permissions'] contains USER_ADMIN
+   */
+  function isAdmin(){
+
+    $admin = FALSE;
+
+    if(isset($_SESSION['user']['permissions']) && in_array('USER_ADMIN',
+        $_SESSION['user']['permissions']))
+      $admin = TRUE;
+
+    return $admin;
+
+  }
+
+
+  /**
+   * Checks $_SESSION['user']['permissions'] contains CREATE_USERS
+   */
+  function canCreateUsers(){
+
+    $create = FALSE;
+
+    if(isset($_SESSION['user']['permissions']) && in_array('CREATE_USERS',
+        $_SESSION['user']['permissions']))
+      $create = TRUE;
+
+    return $create;
+
+  }
+
 ?>
