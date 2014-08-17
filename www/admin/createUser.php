@@ -1,26 +1,24 @@
 <?php
 
   include('../includes/session.php');
+  include('../includes/database.php');
+
+  $mysqli = getDatabaseRead(); //Get MySQL connection for page
+
+  include('../includes/loggedIn.php');
   include('includes/createUser.php');
 
-  //DEBUG
-  $_SESSION['isAdmin'] = TRUE;
-  $_SESSION['canCreateUsers'] = TRUE;
-
-  if(!isset($_SESSION['isAdmin']))
+  if(isAdmin() === FALSE)
     header('Location: ../index.php');//Not an admin so go away
-  else if(!isset($_SESSION['canCreateUsers']))//Admin but can't create users
+  else if(canCreateUsers() === FALSE)//Admin but can't create users
     header('Location: main.php');//Go back to admin main.php
-
-  include('../includes/database.php');
 
   $createdUser = FALSE;
   $invalidLoginPassword = FALSE;
   $userExists = FALSE;
 
-  if(isset($_SESSION['canCreateUsers'], $_POST['login'],
-       $_POST['password'], $_POST['name'], $_POST['email']) &&
-       $_SESSION['canCreateUsers']){
+  if(isset($_POST['login'], $_POST['password'], $_POST['name'], 
+        $_POST['email'])){
 
     if(isAcceptableLogin($_POST['login']) && isAcceptablePassword(
          $_POST['password']) && isAcceptableEmail($_POST['email'])){
@@ -95,4 +93,8 @@
     </div>
   </body>
 </html>
+<?php
 
+  $mysqli->close();
+
+?>
