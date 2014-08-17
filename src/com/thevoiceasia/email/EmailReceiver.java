@@ -527,7 +527,18 @@ public class EmailReceiver extends Thread{
 		}
 		
 		int existingContactId = getContactId(fromAddress, contactName, sms);
-		
+		//TODO preview for SMS cut all the Date: Blah To: Our SMS Number and leave message
+		/*	Date:2014-08-17 07:00:55
+			To:Our Number
+			From No:Contacts number
+
+			Message:Blah blah blah blah blah
+
+
+
+			Message delivery powered by www.xpressms.com
+
+		 */
 		String preview = messageContent.replaceAll("\n", "  ").replaceAll("\r", "");
 		
 		if(preview.length() > 50)
