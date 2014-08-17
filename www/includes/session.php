@@ -8,13 +8,13 @@
    */
   function logoutSession(){
 
-    if(isset($_SESSION['user'])
+    if(isset($_SESSION['user']))
       unset($_SESSION['user']);
 
-    if(isset($_SESSION['userid'])
+    if(isset($_SESSION['userid']))
       unset($_SESSION['userid']);
 
-    if(isset($_SESSION['failedLogins'])
+    if(isset($_SESSION['failedLogins']))
       unset($_SESSION['failedLogins']);
 
     session_unset();
