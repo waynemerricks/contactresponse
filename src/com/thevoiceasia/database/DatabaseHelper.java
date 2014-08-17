@@ -70,7 +70,7 @@ public class DatabaseHelper {
 						"?user=" + user + "&password=" + password); //$NON-NLS-1$//$NON-NLS-2$ 						
 				
 				connected = true;
-				LOGGER.info("Connected to MySQL Database");
+				LOGGER.finest("Connected to MySQL Database");
 				
 			}catch(SQLException e){
 				
@@ -97,7 +97,7 @@ public class DatabaseHelper {
 			try {
 				
 				databaseConnection.close();
-				
+				LOGGER.finest("Disconnected from MySQL Database");
 				connected = false;
 				
 			} catch (SQLException e) {
