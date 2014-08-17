@@ -23,6 +23,8 @@ import org.apache.commons.validator.routines.EmailValidator;
 
 /* TVA STUFF */
 import com.thevoiceasia.database.*;
+import com.thevoiceasia.html.HTML2Text;
+import com.thevoiceasia.sms.XpressMS;
 
 
 public class EmailReceiver extends Thread{
@@ -351,10 +353,21 @@ public class EmailReceiver extends Thread{
 						if(message.getContent() instanceof MimeMultipart){
 							
 							MimeMultipart msgContent = (MimeMultipart)message.getContent();
-							messageContent = prefixSubject(getMessageContent(msgContent), subject);
 							
-						}else
-							messageContent = prefixSubject(message.getContent().toString(), subject);
+							if(!fromAddress.contains("@sms.xpressms.com"))
+								messageContent = prefixSubject(getMessageContent(msgContent), subject);
+							else
+								messageContent = parseSMS(getMessageContent(msgContent));
+							
+						}else{
+							
+							if(!fromAddress.contains("@sms.xpressms.com"))
+								messageContent = prefixSubject(message.getContent().toString(), subject);
+							else
+								messageContent = parseSMS(message.getContent().toString());
+								
+						}
+							
 						
 						//All messages in inbox should be processed and then deleted
 						if(!DEBUG_MODE){
@@ -415,6 +428,17 @@ public class EmailReceiver extends Thread{
 	}
 
 	/**
+	 * Returns only the Message portion of the SMS message as provided by Express SMS
+	 * @param messageContent full SMS in plain text
+	 * @return just the message bit
+	 */
+	private String parseSMS(String messageContent) {
+		
+		return XpressMS.toMessage(messageContent);
+		
+	}
+
+	/**
 	 * Prefix subject as first line of plain text
 	 * @param text message content
 	 * @param subject subject of message
@@ -465,7 +489,7 @@ public class EmailReceiver extends Thread{
 				}else if(text == null && html == null){
 					
 					if(messageBody.isMimeType("text/html"))
-						html = messageBody.getContent().toString();
+						html = HTML2Text.convert(messageBody.getContent().toString());//Use Jericho to render to plain text
 					else if(messageBody.isMimeType("multipart/alternative")){
 						
 						text = getMessageContent((MimeMultipart)messageBody.getContent());
@@ -527,19 +551,10 @@ public class EmailReceiver extends Thread{
 		}
 		
 		int existingContactId = getContactId(fromAddress, contactName, sms);
-		//TODO preview for SMS cut all the Date: Blah To: Our SMS Number and leave message
-		/*	Date:2014-08-17 07:00:55
-			To:Our Number
-			From No:Contacts number
-
-			Message:Blah blah blah blah blah
-
-
-
-			Message delivery powered by www.xpressms.com
-
-		 */
 		String preview = messageContent.replaceAll("\n", "  ").replaceAll("\r", "");
+		
+		if(preview.startsWith("S:"))//Remove Subject prefix don't need it in preview
+			preview = preview.substring(2);
 		
 		if(preview.length() > 50)
 			preview = preview.substring(0, 47) + "...";
