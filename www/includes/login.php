@@ -14,35 +14,40 @@
     //Verify User Password
     $sql = 'SELECT `password`, `id` FROM `users` WHERE `login_name` = ?';
 
-    if($stmt = $mysqli->prepare($sql) && $stmt->bind_param('s',
-         $username) && $stmt->execute()){
+    if($stmt = $mysqli->prepare($sql)){
 
-      $stmt->bind_result($hash, $id);
+      if($stmt->bind_param('s', $username)){
 
-      while($stmt->fetch()){
+        if($stmt->execute()){
 
-        if(password_verify($password, $hash)){
+          $stmt->bind_result($hash, $id);
 
-          $_SESSION['userid'] = $id; //Set logged in user ID
-          header('Location: main.php');
+          while($stmt->fetch()){
 
-        }else{
+            if(password_verify($password, $hash)){
 
-          incrementLoginFail();
-          $loginError = TRUE;
+              $_SESSION['userid'] = $id; //Set logged in user ID
+              header('Location: main.php');
 
-        }
+            }else{
 
-      }
+              incrementLoginFail();
+              $loginError = TRUE;
 
-      $stmt->close();
+            }
 
-    }else{
+          }
 
-      die('Failed to get login info');
-      incrementLoginFail();
+          $stmt->close();
 
-    }
+        }else
+          die('Failed to execute login lookup' . $stmt->error);
+
+      }else
+        die('Failed to bind login lookup: ' . $stmt->error);
+
+    }else
+      die('Failed to prepare login lookup:' . $mysqli->error);
 
   }
 
