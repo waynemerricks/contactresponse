@@ -19,6 +19,8 @@ import com.sun.mail.pop3.*;
 import javax.mail.*;
 import javax.mail.internet.MimeMultipart;
 
+import org.apache.commons.validator.routines.EmailValidator;
+
 /* TVA STUFF */
 import com.thevoiceasia.database.*;
 
@@ -177,13 +179,71 @@ public class EmailReceiver extends Thread{
 			addressFromEmail = addressFromEmail.split("<")[1]; //$NON-NLS-1$
 			address = addressFromEmail.split(">")[0]; //$NON-NLS-1$
 			
-		}else{//Type 1 address
-			
+		}else//Type 1 address
 			address = addressFromEmail;
+			
+		return address.toLowerCase();
+		
+	}
+	
+	/**
+	 * Returns address type
+	 * @param addressFromEmail email address to check
+	 * @return 1 = Plain email, 2 = Email Name + Email
+	 */
+	private int getAddressType(String addressFromEmail){
+		
+		int type = 1;
+		
+		addressFromEmail = addressFromEmail.trim();
+		
+		if(addressFromEmail.contains("<") && addressFromEmail.endsWith(">")) //$NON-NLS-1$ //$NON-NLS-2$
+			type = 2;
+		
+		return type;	
+		
+	}
+	
+	/**
+	 * Get name from Type 2 email
+	 * @param addressFromEmail Address to parse
+	 * @return Name or null if this is not a type 2
+	 */
+	private String getName(String addressFromEmail){
+		
+		/*
+		 * Two types of addresses:
+		 * 1: someone@blah.com
+		 * 2: someone <someone@blah.com>
+		 * 2a: "someone@blah.com" <someone@blah.com> 
+		 */
+		String name = null;
+		
+		addressFromEmail = addressFromEmail.trim();
+		
+		if(addressFromEmail.contains("<") && addressFromEmail.endsWith(">")){ //$NON-NLS-1$ //$NON-NLS-2$
+			
+			name = addressFromEmail.split("<")[0].trim();
+		
+			/* Sometimes email won't send with a "Name component"
+			 * Most of the time it is Name <address>
+			 * Other times its "Email Address" <address> so we need to check for this case here
+			 */
+			if(name.startsWith("\"") && name.endsWith("\"")){//Remove the pre/post "
+				
+				name = name.substring(1);
+				name = name.substring(0, name.length() - 1);
+				
+			}
+		
+			EmailValidator ev = EmailValidator.getInstance(false);
+			
+			if(ev.isValid(name))//If what we're left with is a valid email, then this isn't a name
+				name = null;
 			
 		}
 		
-		return address.toLowerCase();
+		return name;
 		
 	}
 	
@@ -255,6 +315,7 @@ public class EmailReceiver extends Thread{
 						Address[] from = message.getFrom();
 						
 						String fromAddress = null;
+						String contactName = null;
 						
 						if(from != null){
 						
@@ -267,7 +328,12 @@ public class EmailReceiver extends Thread{
 								
 							}
 							
+							if(getAddressType(fromAddress) == 2)
+								contactName = getName(fromAddress);
+							
 							fromAddress = getAddress(fromAddress);
+							
+							
 							LOGGER.finest("From: " + fromAddress); //$NON-NLS-1$
 							
 						}
@@ -301,7 +367,7 @@ public class EmailReceiver extends Thread{
 							 */
 							if(messageContent != null){
 								
-								if(processEmail(headerDate, fromAddress, toAddress, messageContent))//Finished so mark message for deletion
+								if(processEmail(headerDate, fromAddress, toAddress, contactName, messageContent))//Finished so mark message for deletion
 									message.setFlag(Flags.Flag.DELETED, true);
 								else
 									message.setFlag(Flags.Flag.SEEN, true);
@@ -442,10 +508,11 @@ public class EmailReceiver extends Thread{
 	 * @param sentDate Date email was sent
 	 * @param fromAddress Email address this was sent from
 	 * @param toAddress Address this email was sent to
+	 * @param contactName Name of contact or null if none
 	 * @return true if processed successfully
 	 */
 	private boolean processEmail(Date sentDate, String fromAddress, String toAddress,
-			String messageContent) {
+			String contactName, String messageContent) {
 		
 		boolean success = false;
 		
@@ -459,7 +526,7 @@ public class EmailReceiver extends Thread{
 			
 		}
 		
-		int existingContactId = getContactId(fromAddress, sms);
+		int existingContactId = getContactId(fromAddress, contactName, sms);
 		
 		String preview = messageContent.replaceAll("\n", "  ").replaceAll("\r", "");
 		
@@ -628,14 +695,15 @@ public class EmailReceiver extends Thread{
 	/**
 	 * Gets a contact id from the contacts table, if no contact exists, it will be created
 	 * @param fromAddress Address to lookup
+	 * @param name Name of contact or null if none
 	 * @param smsMessage if this is an sms message it searches by phone and not email
 	 * @return id of existing or new contact
 	 */
-	private int getContactId(String fromAddress, boolean smsMessage) {
+	private int getContactId(String fromAddress, String name, boolean smsMessage) {
 		
 		int id = -1;
 		
-		String SQL = "SELECT `id` FROM `contacts` WHERE `email` = ?";
+		String SQL = "SELECT `id`, `name` FROM `contacts` WHERE `email` = ?";
 		
 		if(smsMessage){
 			
@@ -659,14 +727,23 @@ public class EmailReceiver extends Thread{
 			
 				contactIDs = selectContact.getResultSet();
 				
-				while(contactIDs.next())
+				while(contactIDs.next()){
+					
 					id = contactIDs.getInt(1);
+					
+					if(name != null && contactIDs.getString(2).equals("Unknown"))
+						updateName(id, name);
+					
+				}
 				
 				if(id != -1)
 					LOGGER.finest("Found contact ID For: " + fromAddress);
-				else
-					id = createNewContact(fromAddress, smsMessage);
-				
+				else{
+					if(smsMessage)
+						fromAddress = fromAddress.substring(1);//Remove prefix of % for like lookup
+					
+					id = createNewContact(fromAddress, name, smsMessage);
+				}
 			}
 			
 		}catch(SQLException e){
@@ -697,21 +774,77 @@ public class EmailReceiver extends Thread{
 	}
 
 	/**
+	 * Sets the name of the given contact
+	 * @param id id of record to change
+	 * @param name name to change it to
+	 * @return true if successfully updated
+	 */
+	private boolean updateName(int id, String name) {
+		
+		boolean success = false;
+		String SQL = "UPDATE `contacts` SET `name` = ?, `updated` = ? WHERE `id` = ?";
+		
+		LOGGER.info("Updating Name for " + id + " to " + name);
+		
+		
+		Connection mysql = database.getConnection();
+		PreparedStatement updateContact = null;
+		
+		try{
+			
+			//Bind all variables to statement
+			updateContact = mysql.prepareStatement(SQL);
+			updateContact.setString(1, name);
+			updateContact.setString(2, new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
+			updateContact.setInt(3, id);
+			
+			//Execute it
+			int rows = updateContact.executeUpdate();
+			
+			if(rows > 0)
+				success = true;
+				
+		}catch(SQLException e){
+			
+			e.printStackTrace();
+			LOGGER.severe("SQL Error while updating name on contact " + id + " to " + name);
+			
+		}finally{
+			
+			if(updateContact != null){//Close Statement
+            	try{
+            		updateContact.close();
+            		updateContact = null;
+            	}catch(Exception e){}
+            }
+        	
+		}
+		
+		return success;
+		
+	}
+
+	/**
 	 * Creates a new contact
 	 * @param fromAddress either phone or sms number to create with
+	 * @param name Name of contact to save
 	 * @param smsMessage if sms then we'll insert the fromAddress into the phone field
 	 * else we'll just enter it as an email address
 	 * @return id of inserted contact record
 	 */
-	private int createNewContact(String fromAddress, boolean smsMessage) {
+	private int createNewContact(String fromAddress, String name, boolean smsMessage) {
 		
 		int id = -1;
 		
 		String SQL = "INSERT INTO `contacts` (`email`) VALUES (?)";
 		
-		if(smsMessage)
+		if(name != null && !smsMessage)
+			SQL = "INSERT INTO `contacts` (`email`, `name`) VALUES (?, ?)";
+		else if(name == null && smsMessage)
 			SQL = "INSERT INTO `contacts` (`phone`) VALUES (?)";
-		
+		else if(name != null && smsMessage) //I think name will always be null for an SMS but just in case
+			SQL = "INSERT INTO `contacts` (`phone`, `name`) VALUES (?, ?)";
+			
 		LOGGER.info("Creating new contact for " + fromAddress);
 		
 		Connection mysql = database.getConnection();
@@ -723,6 +856,9 @@ public class EmailReceiver extends Thread{
 			//Bind all variables to statement
 			insertContact = mysql.prepareStatement(SQL, Statement.RETURN_GENERATED_KEYS);
 			insertContact.setString(1, fromAddress);
+			
+			if(name != null)
+				insertContact.setString(2, name);
 			
 			//Execute it
 			int rows = insertContact.executeUpdate();
