@@ -8,32 +8,65 @@
   include('includes/loggedIn.php'); //Include logged in check
   include('includes/inbox.php'); //Functions for getting the inbox of this user
 
-  $contactsPending = getInbox(getUserId(), isDefaultHelper());
+  $contactsPending = getInbox(getUserId(), isDefaultHelper(), $mysqli);
 
 ?>
 <html>
   <head>
-    <title>CRS | Login</title>
+    <title>CRS | Inbox</title>
     <link rel="stylesheet" type="text/css" href="crs.css">
   </head>
   <body>
     <div class="inbox">
       <table class="inbox">
-        <tr>
+        <tr class="header">
+          <th>&nbsp;</th>
+          <th class="centre">Date</th>
           <th>Contact</th>
-          <th>Messages</th>
-          <th>Date</th>
+          <th>Preview</th>
         </tr>
-        <?php for($i = 0; $i < sizeof($contactsPending); $i++){ ?>
+        <?php if(sizeof($contactsPending) == 0){ ?>
+          <tr><td colspan="4">There are no messages in your inbox</td></tr>
+        <?php
+          } else {
+
+            for($i = 0; $i < sizeof($contactsPending); $i++){ 
+
+              $src = 'images/generic.png';
+
+              if($contactsPending[$i]['type'] == 'E')
+                $src = 'images/email.png';
+              else if($contactsPending[$i]['type'] == 'P')
+                $src = 'images/phone.png';
+              else if($contactsPending[$i]['type'] == 'S')
+                $src = 'images/sms.png';
+        ?>
           <tr>
-            <td class="name"><?php echo $contactsPending[$i]['name']; ?></td>
-            <td><?php echo $contactsPending[$i]['numberOfMessages']; ?></td>
-            <td class="time"><?php echo $contactsPending[$i]['date']; ?></td>
+            <td class="icon">
+              <a href="viewPending.php?id=<?php echo $contactsPending[$i]['id']; ?>">
+                <img class="icon" src="<?php echo $src; ?>" />
+              </a>
+            </td>
+            <td class="time centre">
+              <a href="viewPending.php?id=<?php echo $contactsPending[$i]['id']; ?>">
+                <?php echo $contactsPending[$i]['date']; ?>
+              </a>
+            </td>
+            <td class="name">
+              <a href="viewPending.php?id=<?php echo $contactsPending[$i]['id']; ?>">
+                <?php echo $contactsPending[$i]['name']; ?>
+              </a>
+            </td>
+            <td class="preview">
+              <a href="viewPending.php?id=<?php echo $contactsPending[$i]['id']; ?>">
+                <?php echo $contactsPending[$i]['preview']; ?>
+              </a>
+            </td>
           </tr>
-          <tr class="preview">
-            <td class="preview"><?php echo $contactsPending[$i]['preview']; ?></td>
-          </tr>
-        <?php } ?>
+        <?php
+            }
+          }
+        ?>
       </table>
     </div>
   </body>
