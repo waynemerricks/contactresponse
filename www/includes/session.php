@@ -23,4 +23,18 @@
 
   }
 
+  /**
+   * Gets the User ID from the $_SESSION
+   */
+  function getUserId(){
+
+    $id = NULL;
+
+    if(isset($_SESSION['user']['id']))
+      $id = $_SESSION['user']['id'];
+
+    return $id;
+
+  }
+
 ?>
