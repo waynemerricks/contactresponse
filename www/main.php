@@ -7,6 +7,7 @@
 
   include('includes/loggedIn.php'); //Include logged in check
   include('includes/inbox.php'); //Functions for getting the inbox of this user
+  include('includes/user.php'); //Functions relating to logged in user
 
   $contactsPending = getInbox(getUserId(), isDefaultHelper(), $mysqli);
 
