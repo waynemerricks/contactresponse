@@ -16,6 +16,20 @@
   <head>
     <title>CRS | Inbox</title>
     <link rel="stylesheet" type="text/css" href="crs.css">
+    <script type="text/javascript" src="includes/jquery-2.1.1.min.js"></script>
+    <script type="text/javascript">
+      //JQuery updateInbox messages
+      function updateInbox(){
+
+        $.get( "ajax/test.html", function( data ) {
+
+          $( ".result" ).html( data );
+          alert( "Load was performed." );
+
+        });
+
+      }
+    </script>
   </head>
   <body>
     <div class="inbox">
@@ -55,7 +69,7 @@
             </td>
             <td class="name">
               <a href="viewPending.php?id=<?php echo $contactsPending[$i]['id']; ?>">
-                <?php echo $contactsPending[$i]['name']; ?>
+                <?php echo $contactsPending[$i]['name'] . '(' . $contactsPending[$i]['waiting'] . ')'; ?>
               </a>
             </td>
             <td class="preview">
