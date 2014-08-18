@@ -24,7 +24,7 @@
 <html>
   <head>
     <title>CRS | Login</title>
-    <link rel="stylesheet" type="text/css" href="crs.css">
+    <link rel="stylesheet" type="text/css" href="css/crs.css">
   </head>
   <body>
     <div id="error">
