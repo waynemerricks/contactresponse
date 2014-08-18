@@ -67,7 +67,8 @@ public class DatabaseHelper {
 				Class.forName("com.mysql.jdbc.Driver").newInstance(); //$NON-NLS-1$
 				databaseConnection = DriverManager.getConnection("jdbc:mysql://" +  //$NON-NLS-1$
 						host + "/" + database + //$NON-NLS-1$
-						"?user=" + user + "&password=" + password); //$NON-NLS-1$//$NON-NLS-2$ 						
+						"?characterEncoding=UTF-8&user=" + user + //$NON-NLS-1$
+						"&password=" + password); //$NON-NLS-1$
 				
 				connected = true;
 				LOGGER.finest("Connected to MySQL Database");
