@@ -16,21 +16,15 @@
 
     $pendingMessages = getPendingMessages(getUserId(), $_GET['id'], 
         isDefaultHelper(), $mysqli);
-    $contact = getContact($_GET['id']);
+    $contact = new Contact($_GET['id'], $mysqli);
 
   }else
     header('Location: main.php');//We got here weirdly so just go back to main
 
-  //DEBUG VALUES
-  $contact['name'] = 'Name Test';
-  $contact['location'] = 'England';
-  $contact['gender'] = 'Male';
-  $contact['notes'] = 'Testing value remove after debugging';
-
 ?>
 <html>
   <head>
-    <title>CRS | <?php echo $contact['name']; ?></title>
+    <title>CRS | <?php echo $contact->name; ?></title>
     <link rel="stylesheet" type="text/css" href="crs.css">
     <link rel="stylesheet" type="text/css" href="crs_viewPending.css">
   </head>
@@ -40,19 +34,19 @@
        <tr>
          <td rowspan="4"><img src="images/nophoto.png" /></td>
          <th>Name:</th>
-         <td class="fullWidth"><?php echo $contact['name']; ?></td>
+         <td class="fullWidth"><?php echo $contact->name; ?></td>
        </tr>
        <tr>
          <th>Location:</th>
-         <td class="fullWidth"><?php echo $contact['location']; ?></td>
+         <td class="fullWidth"><?php echo $contact->getLocation(); ?></td>
        </tr>
        <tr>
          <th>Gender:</th>
-         <td class="fullWidth"><?php echo $contact['gender']; ?></td>
+         <td class="fullWidth"><?php echo $contact->gender; ?></td>
        </tr>
        <tr>
          <th>Notes:</th>
-         <td class="fullWidth"><?php echo $contact['notes']; ?></td>
+         <td class="fullWidth"><?php echo $contact->getNotes(); ?></td>
        </tr>
       </table>
     </div>
