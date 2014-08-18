@@ -62,8 +62,12 @@
 
           $stmt->bind_result($count);
 
-          while($stmt->fetch())
-            $userExists = TRUE;
+          while($stmt->fetch()){
+
+            if($count != 0)
+              $userExists = TRUE;
+
+          }
 
         }else
           die('Failed to execute check user statement');
