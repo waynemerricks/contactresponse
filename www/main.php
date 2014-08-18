@@ -55,12 +55,42 @@
                 $src = 'images/phone.png';
               else if($contactsPending[$i]['type'] == 'S')
                 $src = 'images/sms.png';
+                
+              $r = 31;
+              $g = 131;
+              $b = 23;
+
+              if($contactsPending[$i]['waiting'] > 99){
+
+                $r = 131;
+                $g = 31;
+                $b = 1;
+
+              }else if($contactsPending[$i]['waiting'] > 1){
+
+                $r = $r + $contactsPending[$i]['waiting'];
+                $g = $g - $contactsPending[$i]['waiting'];
+                $b = $b - $contactsPending[$i]['waiting'] / 5;
+
+              }
+
+              $rgb = $r . ', ' . $g . ', ' . round($b);
+
+              if($contactsPending[$i]['waiting'] > 99)
+                $contactsPending[$i]['waiting'] = '99+';
         ?>
           <tr>
             <td class="icon">
-              <a href="viewPending.php?id=<?php echo $contactsPending[$i]['id']; ?>">
-                <img class="icon" src="<?php echo $src; ?>" />
-              </a>
+              <div id="container">
+                <div id="icon">
+                  <a href="viewPending.php?id=<?php echo $contactsPending[$i]['id']; ?>">
+                    <img class="icon" src="<?php echo $src; ?>" />
+                  </a>
+                </div>
+                <div id="badge" style="background-color: rgb(<?php echo $rgb; ?>)">
+                  <?php echo $contactsPending[$i]['waiting']; ?>
+                </div>
+              </div>
             </td>
             <td class="time centre">
               <a href="viewPending.php?id=<?php echo $contactsPending[$i]['id']; ?>">
@@ -69,7 +99,7 @@
             </td>
             <td class="name">
               <a href="viewPending.php?id=<?php echo $contactsPending[$i]['id']; ?>">
-                <?php echo $contactsPending[$i]['name'] . '(' . $contactsPending[$i]['waiting'] . ')'; ?>
+                <?php echo $contactsPending[$i]['name']; ?>
               </a>
             </td>
             <td class="preview">
