@@ -25,8 +25,8 @@
 <html>
   <head>
     <title>CRS | <?php echo $contact->name; ?></title>
-    <link rel="stylesheet" type="text/css" href="crs.css">
-    <link rel="stylesheet" type="text/css" href="crs_viewPending.css">
+    <link rel="stylesheet" type="text/css" href="css/crs.css">
+    <link rel="stylesheet" type="text/css" href="css/crs_viewPending.css">
   </head>
   <body>
     <div class="contact">
@@ -93,7 +93,8 @@
         ?>
       </table>
     </div>
-    <div class="reply">
+    <div id="spacer"></div>
+    <div class="replytoolbox">
       <a href="mailto:<?php echo $mailToID; ?>@crs.internal">Reply By Email</a>
     </div>
   </body>
