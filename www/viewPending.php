@@ -81,8 +81,11 @@
             <td class="icon">
               <img class="icon" src="<?php echo $src; ?>" />
             </td>
-            <td colspan="2" class="time fullWidth">
+            <td class="time">
               <?php echo $pendingMessages[$i]['date']; ?>
+            </td>
+            <td class="subject fullWidth">
+              <?php echo $pendingMessages[$i]['subject']; ?>
             </td>
           </tr>
           <tr class="message">
