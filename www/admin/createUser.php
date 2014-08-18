@@ -17,7 +17,7 @@
   $invalidLoginPassword = FALSE;
   $userExists = FALSE;
 
-  if(isset($_POST['login'], $_POST['password'], $_POST['name'], 
+  if(isset($_POST['login'], $_POST['password'], $_POST['name'],
         $_POST['email'])){
 
     if(isAcceptableLogin($_POST['login']) && isAcceptablePassword(
@@ -33,7 +33,7 @@
         $stmt = NULL;
 
         if($stmt = $mysqli->prepare($sql)){
-          if($stmt->bind_param('ssss',$_POST['login'], 
+          if($stmt->bind_param('ssss',$_POST['login'],
                password_hash($_POST['password'],PASSWORD_DEFAULT), $_POST['name'],
                $_POST['email'])){
 
@@ -70,7 +70,7 @@
       <?php if($invalidLoginPassword === TRUE){ ?>
         You have chosen an unsuitable user name or password.<br><br>
         User Names should be at least 8 characters long<br><br>
-        Passwords should also be at least 8 characters long. They must contain 
+        Passwords should also be at least 8 characters long. They must contain
         at least 1 number and 1 upper case letter.<br>
       <?php } ?>
       <?php if($userExists === TRUE){ ?>
