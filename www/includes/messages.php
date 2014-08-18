@@ -27,7 +27,12 @@
       //date, type, data from file
       $record = array();
 
-      $format = 'd/m/Y H:i:s';
+      $today = date('Ymd');
+      $recordDay = date('Ymd', strtotime($row['created']));
+      $format = 'd/m/Y';
+
+      if($today == $recordDay)
+        $format = 'H:i';
 
       $record['date'] = date($format, strtotime($row['created']));
       $record['type'] = $row['type'];
