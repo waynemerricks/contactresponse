@@ -5,6 +5,12 @@ table.contact {
 
 }
 
+.subject {
+
+  font-weight: bold;
+
+}
+
 table.contact th {
 
   text-align: left;
