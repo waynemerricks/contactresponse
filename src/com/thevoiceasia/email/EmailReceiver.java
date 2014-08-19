@@ -584,6 +584,9 @@ public class EmailReceiver extends Thread{
 			
 		}
 		
+		//We can still have html here if the email registered plain text but sent html
+		//So strip it
+		messageContent = HTML2Text.convert(messageContent);
 		int existingContactId = getContactId(fromAddress, contactName, sms);
 		String preview = messageContent.replaceAll("\n", "  ").replaceAll("\r", "");
 		
