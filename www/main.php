@@ -55,7 +55,7 @@
                 $src = 'images/phone.png';
               else if($contactsPending[$i]['type'] == 'S')
                 $src = 'images/sms.png';
-                
+
               $r = 31;
               $g = 131;
               $b = 23;
@@ -77,7 +77,7 @@
               $rgb = $r . ', ' . $g . ', ' . round($b);
 
               if($contactsPending[$i]['waiting'] > 99)
-                $contactsPending[$i]['waiting'] = '99+';
+                $contactsPending[$i]['waiting'] = '++';
         ?>
           <tr>
             <td class="icon">
