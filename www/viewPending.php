@@ -124,7 +124,6 @@
         </li>
         <li class="right"><a href="#">Logout</a></li>
       </ul>
-      
     </div>
   </body>
 </html>
