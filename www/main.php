@@ -14,6 +14,7 @@
 ?>
 <html>
   <head>
+    <meta charset="utf8">
     <title>CRS | Inbox</title>
     <link rel="stylesheet" type="text/css" href="css/crs.css">
     <script type="text/javascript" src="includes/jquery-2.1.1.min.js"></script>
