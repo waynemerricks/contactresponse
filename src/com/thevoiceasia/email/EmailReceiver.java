@@ -258,6 +258,9 @@ public class EmailReceiver extends Thread{
 	 */
 	private void receiveEmail(String pop3Host, String user, String password, int number) {
 
+		POP3Store emailStore = null;
+		Folder emailFolder = null;
+		
 		try {
 			
 			Properties properties = new Properties();
@@ -267,13 +270,13 @@ public class EmailReceiver extends Thread{
 			Session emailSession = Session.getDefaultInstance(properties);
 
 			URLName url = new URLName("pop3", pop3Host, 110, "", user, password);  //$NON-NLS-1$//$NON-NLS-2$
-			POP3Store emailStore = (POP3Store) emailSession.getStore(url);
+			emailStore = (POP3Store) emailSession.getStore(url);
 			LOGGER.finest("Connecting to server " + pop3Host + " as " + user); //$NON-NLS-1$ //$NON-NLS-2$
 			emailStore.connect(user, password);
 			LOGGER.finest("Connected..."); //$NON-NLS-1$
 			
 			LOGGER.finest("Opening INBOX"); //$NON-NLS-1$
-			Folder emailFolder = emailStore.getFolder("INBOX"); //$NON-NLS-1$
+			emailFolder = emailStore.getFolder("INBOX"); //$NON-NLS-1$
 			emailFolder.open(Folder.READ_WRITE);
 			LOGGER.finest("Opened..."); //$NON-NLS-1$
 			
@@ -294,106 +297,121 @@ public class EmailReceiver extends Thread{
 						LOGGER.finest("Email: " + i); //$NON-NLS-1$
 						
 						/* Deals with null pointer in recipients[0] */
-						Address[] recipients = message.getAllRecipients();
-						String toAddress = null;
+						boolean skip = false;
 						
-						if(recipients != null){
+						Address[] recipients = null;
 						
-							int j = 0;
+						try{
+							recipients = message.getAllRecipients();
+						}catch(MessagingException e){
 							
-							while(toAddress == null && j < recipients.length){
-							
-								if(recipients[j] != null)
-									toAddress = recipients[j].toString();
-								
-							}
-							
-							toAddress = getAddress(toAddress);
-							LOGGER.finest("Sent To: " + toAddress); //$NON-NLS-1$
+							LOGGER.warning("MESSAGING EXCEPTION: There was a problem getting this messages recipients, skipping message"); //$NON-NLS-1$
+							skip = true;
 							
 						}
 						
-						//Do the same to get the senders address
-						Address[] from = message.getFrom();
-						
-						String fromAddress = null;
-						String contactName = null;
-						
-						if(from != null){
-						
-							int j = 0;
+						if(!skip){//problem with this message so skip it
 							
-							while(fromAddress == null && j < from.length){
+							String toAddress = null;
 							
-								if(from[j] != null)
-									fromAddress = from[j].toString();
+							if(recipients != null){
+							
+								int j = 0;
 								
-							}
-							
-							if(getAddressType(fromAddress) == 2)
-								contactName = getName(fromAddress);
-							
-							fromAddress = getAddress(fromAddress);
-							
-							
-							LOGGER.finest("From: " + fromAddress); //$NON-NLS-1$
-							
-						}
-						
-						Date headerDate = formatHeaderDate(message.getHeader("Received")[0]); //$NON-NLS-1$
-						
-						//Read message content and pick out email, name, content
-						//and referrer so we know what form was used
-						String messageContent = null;
-						String subject = message.getSubject();
-						
-						if(subject == null)
-							subject = "";
-						
-						if(message.getContent() instanceof MimeMultipart){
-							
-							MimeMultipart msgContent = (MimeMultipart)message.getContent();
-							
-							if(!fromAddress.contains("@sms.xpressms.com"))
-								messageContent = prefixSubject(getMessageContent(msgContent), subject);
-							else
-								messageContent = parseSMS(getMessageContent(msgContent));
-							
-						}else{
-							
-							if(!fromAddress.contains("@sms.xpressms.com"))
-								messageContent = prefixSubject(message.getContent().toString(), subject);
-							else
-								messageContent = parseSMS(message.getContent().toString());
+								while(toAddress == null && j < recipients.length){
 								
-						}
-							
-						
-						//All messages in inbox should be processed and then deleted
-						if(!DEBUG_MODE){
-							
-							/* Actually do something with the email here
-							 * receivedDate: Date when email was sent
-							 * messageContent: Email hopefully in plain text (no attachments)
-							 * toAddress: Email Address of original recipient
-							 * fromAddress: Email Address of person who sent this message 
-							 */
-							if(messageContent != null){
-								
-								if(processEmail(headerDate, fromAddress, toAddress, contactName, messageContent))//Finished so mark message for deletion
-									message.setFlag(Flags.Flag.DELETED, true);
-								else
-									message.setFlag(Flags.Flag.SEEN, true);
+									if(recipients[j] != null)
+										toAddress = recipients[j].toString();
 									
-								if(message.isSet(Flags.Flag.DELETED))
-									LOGGER.finest("Marked for Deletion"); //$NON-NLS-1$
+								}
+								
+								toAddress = getAddress(toAddress);
+								LOGGER.finest("Sent To: " + toAddress); //$NON-NLS-1$
+								
+							}
+							
+							//Do the same to get the senders address
+							Address[] from = message.getFrom();
+							
+							String fromAddress = null;
+							String contactName = null;
+							
+							if(from != null){
+							
+								int j = 0;
+								
+								while(fromAddress == null && j < from.length){
+								
+									if(from[j] != null)
+										fromAddress = from[j].toString();
+									
+								}
+								
+								if(getAddressType(fromAddress) == 2)
+									contactName = getName(fromAddress);
+								
+								fromAddress = getAddress(fromAddress);
+								
+								
+								LOGGER.finest("From: " + fromAddress); //$NON-NLS-1$
+								
+							}
+							
+							Date headerDate = formatHeaderDate(message.getHeader("Received")[0]); //$NON-NLS-1$
+							
+							//Read message content and pick out email, name, content
+							//and referrer so we know what form was used
+							String messageContent = null;
+							String subject = message.getSubject();
+							
+							if(subject == null)
+								subject = "";
+							
+							if(message.getContent() instanceof MimeMultipart){
+								
+								MimeMultipart msgContent = (MimeMultipart)message.getContent();
+								
+								if(!fromAddress.contains("@sms.xpressms.com"))
+									messageContent = prefixSubject(getMessageContent(msgContent), subject);
+								else
+									messageContent = parseSMS(getMessageContent(msgContent));
+								
+							}else{
+								
+								if(!fromAddress.contains("@sms.xpressms.com"))
+									messageContent = prefixSubject(message.getContent().toString(), subject);
+								else
+									messageContent = parseSMS(message.getContent().toString());
+									
+							}
+								
+							
+							//All messages in inbox should be processed and then deleted
+							if(!DEBUG_MODE){
+								
+								/* Actually do something with the email here
+								 * receivedDate: Date when email was sent
+								 * messageContent: Email hopefully in plain text (no attachments)
+								 * toAddress: Email Address of original recipient
+								 * fromAddress: Email Address of person who sent this message 
+								 */
+								if(messageContent != null){
+									
+									if(processEmail(headerDate, fromAddress, toAddress, contactName, messageContent))//Finished so mark message for deletion
+										message.setFlag(Flags.Flag.DELETED, true);
+									else
+										message.setFlag(Flags.Flag.SEEN, true);
+										
+									if(message.isSet(Flags.Flag.DELETED))
+										LOGGER.finest("Marked for Deletion"); //$NON-NLS-1$
+									
+								}else
+									LOGGER.warning("Unable to get message content for " + fromAddress);
 								
 							}else
-								LOGGER.warning("Unable to get message content for " + fromAddress);
+								LOGGER.info(fromAddress + "/" + toAddress + "\n" + messageContent);
 							
-						}else
-							LOGGER.info(fromAddress + "/" + toAddress + "\n" + messageContent);
-						
+						}
 					}
 					
 				}
@@ -402,11 +420,6 @@ public class EmailReceiver extends Thread{
 				
 			}else
 				LOGGER.finest("Inbox Empty, nothing to do");
-			
-			LOGGER.finest("Closing connections..."); //$NON-NLS-1$
-			emailFolder.close(true);
-			emailStore.close();
-			LOGGER.finest("Connections closed"); //$NON-NLS-1$
 			
 		} catch (NoSuchProviderException e) {
 			
@@ -422,6 +435,27 @@ public class EmailReceiver extends Thread{
 		
 			LOGGER.warning("Error getting message content"); //$NON-NLS-1$
 			e.printStackTrace();
+			
+		} finally {
+			
+			if(emailFolder != null && emailStore != null){
+				
+				LOGGER.finest("Closing connections..."); //$NON-NLS-1$
+				
+				try{
+					
+					emailFolder.close(true);
+					emailStore.close();
+					
+				}catch(MessagingException e){
+					
+					LOGGER.severe("Failed to close email store and commit changes");
+					
+				}
+				
+				LOGGER.finest("Connections closed"); //$NON-NLS-1$
+				
+			}
 			
 		}
 
@@ -449,13 +483,13 @@ public class EmailReceiver extends Thread{
 		if(text != null)
 			text = text.trim();
 		else
-			text = "";
+			text = ""; //$NON-NLS-1$
 		
 		subject = subject.trim();
 		
 		//Prefix with subject if applicable
 		if(subject.length() > 0)
-			text = "S:" + subject + "\n" + text;
+			text = "S:" + subject + "\n" + text; //$NON-NLS-1$ //$NON-NLS-2$
 			
 		return text;
 		
