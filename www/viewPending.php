@@ -96,15 +96,35 @@
       </table>
     </div>
     <div id="spacer"></div>
-    <div id="reply-toolbar">
-      <ul class="has-sub"><!--Menu Root-->
-        <li><a href="#">Manual Reply</a></li>
-          <ul>
-            <li>Child of Manual</li>
+    <div id="footer">
+      <ul id="footer_menu"><!-- Menu Root -->
+        <li class="homeButton"><a href="#"></a></li>
+        <li><a href="#">Manual Reply</a>
+          <ul class="dropup">
+            <li><a href="#">Email</a></li>
+            <li><a href="#">SMS</a></li>
+            <li><a href="#">Letter</a></li>
           </ul>
-        <li>Set As...</li>
-        <li>Delegate</li>
-      </ul><!--End Menu Root-->
+        </li>
+        <li><a href="#">Auto Reply As...</a>
+          <ul class="dropup">
+            <li><a href="#">General</a></li>
+            <li><a href="#">Bible</a></li>
+            <li><a href="#">Competition</a></li>
+            <li><a href="#">DVD</a></li>
+          </ul>
+        </li>
+        <li><a href="#">Delegate to...</a>
+          <ul class="dropup">
+            <li><a href="#">Aziz Masih</a></li>
+            <li><a href="#">Preeti James</a></li>
+            <li><a href="#">Liza Gill</a></li>
+            <li><a href="#">Rachbinder Bunger</a></li>
+          </ul>
+        </li>
+        <li class="right"><a href="#">Logout</a></li>
+      </ul>
+      
     </div>
   </body>
 </html>
