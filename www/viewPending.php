@@ -24,9 +24,11 @@
 ?>
 <html>
   <head>
+    <meta charset="utf8">
     <title>CRS | <?php echo $contact->name; ?></title>
     <link rel="stylesheet" type="text/css" href="css/crs.css">
     <link rel="stylesheet" type="text/css" href="css/crs_viewPending.css">
+    <link rel="stylesheet" type="text/css" href="css/menu.css">
   </head>
   <body>
     <div class="contact">
@@ -94,8 +96,15 @@
       </table>
     </div>
     <div id="spacer"></div>
-    <div class="replytoolbox">
-      <a href="mailto:<?php echo $mailToID; ?>@crs.internal">Reply By Email</a>
+    <div id="reply-toolbar">
+      <ul class="has-sub"><!--Menu Root-->
+        <li><a href="#">Manual Reply</a></li>
+          <ul>
+            <li>Child of Manual</li>
+          </ul>
+        <li>Set As...</li>
+        <li>Delegate</li>
+      </ul><!--End Menu Root-->
     </div>
   </body>
 </html>
