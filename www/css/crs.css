@@ -95,6 +95,36 @@ table.inbox tr a {
 
 }
 
+.quickTools {
+
+  display: none;
+  z-index: 1;
+  width: 295px;
+  height: 30px;
+  background-color: white;
+  border: 1px solid black;
+  position: absolute;
+  right: 5px;
+  margin-top: -32px;
+  padding: 5px;
+  -webkit-box-shadow: 4px 4px 5px 0px rgba(0, 0, 0, 0.7);
+  -moz-box-shadow:    4px 4px 5px 0px rgba(0, 0, 0, 0.7);
+  box-shadow:         4px 4px 5px 0px rgba(0, 0, 0, 0.7);
+
+}
+
+table.inbox tr td div.quickTools a {
+
+  display: inline-block;
+
+}
+
+table.inbox tr:hover td div.quickTools{
+
+  display: inline-block;
+
+}
+
 table.inbox tr:hover {
 
   background-color: #ffff99;
