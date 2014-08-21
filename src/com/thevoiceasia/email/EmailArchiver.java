@@ -20,15 +20,15 @@ import com.thevoiceasia.database.DatabaseHelper;
 import com.thevoiceasia.html.HTML2Text;
 import com.thevoiceasia.sms.XpressMS;
 
-public class EmailArchiver implements EmailReader {
+public class EmailArchiver extends Thread implements EmailReader {
 
-	private EmailReceiver receiver = null;
 	private DatabaseHelper database = null;
-	private String ARCHIVE_PATH = null;
+	private String ARCHIVE_PATH = null, mailHost = null, mailUser = null, mailPass = null;
 	private boolean archiveValid = false;
 	private static final Logger LOGGER = Logger.getLogger("com.thevoiceasia"); //$NON-NLS-1$
 	private static final Level LEVEL = Level.INFO;//Logging level of this class
-	
+	private static final int EMAIL_CHECK_PERIOD = 60; //Time to check for emails in seconds
+		
 	/**
 	 * Receives Email from the given email inbox (no subfolders) and archives
 	 * it in the database and emailStorePath
@@ -45,8 +45,11 @@ public class EmailArchiver implements EmailReader {
 			String dbBase, String mailHost, String mailUser, String mailPass, 
 			String emailStorePath){
 		
+		this.mailHost = mailHost;
+		this.mailUser = mailUser;
+		this.mailPass = mailPass;
+		
 		database = new DatabaseHelper(dbHost, dbBase, dbUser, dbPass);
-		receiver = new EmailReceiver(mailHost, mailUser, mailPass, this);
 		ARCHIVE_PATH = emailStorePath;
 		
 		File directory = new File(ARCHIVE_PATH);
@@ -55,6 +58,36 @@ public class EmailArchiver implements EmailReader {
 			archiveValid = true;
 		
 		setupLogging();
+		
+	}
+	
+	/**
+	 * Connects to MySQL
+	 */
+	public void connectToDB(){
+		
+		database.connect();
+		
+	}
+	
+	/**
+	 * Disconnect from MySQL
+	 */
+	public void disconnectFromDB(){
+		
+		database.disconnect();
+		
+	}
+	
+	/**
+	 * Get emails to process
+	 * @throws InterruptedException 
+	 */
+	public void getEmails() throws InterruptedException{
+		
+		EmailReceiver receiver = new EmailReceiver(mailHost, mailUser, mailPass, this);
+		receiver.start();
+		receiver.join();
 		
 	}
 	
@@ -97,15 +130,42 @@ public class EmailArchiver implements EmailReader {
 		
 		if(args.length == 8){
 			
-			EmailArchiver emr = new EmailArchiver(args[0], args[1], args[2], args[3], args[4], args[5],
+			EmailArchiver archiver = new EmailArchiver(args[0], args[1], args[2], args[3], args[4], args[5],
 					args[6], args[7]);
 			
-			if(!emr.isValidArchive()){
+			if(!archiver.isValidArchive()){
 				System.out.println("Email Store Path invalid, doesn't exist or has no write permissions: " + args[7]); //$NON-NLS-1$
 				System.exit(1);
 			}
+			
+			LOGGER.info("Archiver: Started on inbox " + args[5]); //$NON-NLS-1$
 				
-			//emr.start();
+			boolean go = true;
+			
+			while(go){
+				
+				try {
+					
+					archiver.connectToDB();
+					archiver.getEmails();
+					archiver.disconnectFromDB();
+					
+					LOGGER.finest("Archiver: Sleeping for " + EMAIL_CHECK_PERIOD);
+					sleep(1000 * EMAIL_CHECK_PERIOD);
+					
+				} catch (InterruptedException e) {
+					
+					LOGGER.info("Archiver: Interrupted, exiting");
+					e.printStackTrace();
+					go = false;
+					
+				} finally {
+					
+					archiver.disconnectFromDB();
+					
+				}
+				
+			}
 			
 		}else{
 			
@@ -445,8 +505,6 @@ public class EmailArchiver implements EmailReader {
 		
 	}
 	
-	//prefixSubject(getMessageContent(msgContent), subject);
-	//SMS XPRESS parseSMS(getMessageContent(msgContent));
 	@Override
 	public boolean receiveEmail(Date receivedDate, String from, String to, 
 			String name, String body, String subject) {
@@ -460,8 +518,10 @@ public class EmailArchiver implements EmailReader {
 		
 			sms = true;
 			type = "S"; //$NON-NLS-1$
+			body = parseSMS(body);//Split XpressMS info out of the body
 			
-		}
+		}else
+			body = prefixSubject(body, subject);
 		
 		//We can still have html here if the email registered plain text but sent html
 		//So strip it

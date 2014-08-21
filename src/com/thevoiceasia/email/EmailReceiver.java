@@ -15,19 +15,16 @@ import javax.mail.internet.MimeMultipart;
 import org.apache.commons.validator.routines.EmailValidator;
 
 /* TVA STUFF */
-import com.thevoiceasia.database.*;
 import com.thevoiceasia.html.HTML2Text;
 
 
 public class EmailReceiver extends Thread{
 
 	/* STATIC SETTINGS */
-	private static final int EMAIL_CHECK_PERIOD = 60; //Time to check for emails in seconds
 	private static final Logger LOGGER = Logger.getLogger("com.thevoiceasia.email"); //$NON-NLS-1$
 	private static final boolean DEBUG_MODE = false;
 	
 	/* CLASS VARS */
-	private DatabaseHelper database = null;
 	private String MAIL_SERVER, MAIL_USER, MAIL_PASSWORD;
 	private EmailReader reader = null;
 	
@@ -53,33 +50,9 @@ public class EmailReceiver extends Thread{
 	 */
 	public void run(){
 		
-		boolean run = true;
-		
-		LOGGER.info("Importer: Started on inbox " + MAIL_USER); //$NON-NLS-1$
-		
-		while(run){
-		
-			database.connect();
-			
-			receiveEmail(MAIL_SERVER, MAIL_USER, MAIL_PASSWORD, 50);
-			
-			database.disconnect();
-			
-			try{
-				
-				LOGGER.finest("Importer: Sleeping..."); //$NON-NLS-1$
-				sleep(EMAIL_CHECK_PERIOD * 1000);
-				
-			}catch(InterruptedException e){
-				
-				run = false;
-				LOGGER.warning("Importer: Interrupted!"); //$NON-NLS-1$
-				
-			}
-			
-		}
-		
-		LOGGER.info("Importer:  Stopped"); //$NON-NLS-1$
+		LOGGER.finest("Importer: Started on inbox " + MAIL_USER); //$NON-NLS-1$
+		receiveEmail(MAIL_SERVER, MAIL_USER, MAIL_PASSWORD, 50);
+		LOGGER.finest("Importer: Finished reading Emails"); //$NON-NLS-1$
 		
 	}
 	
@@ -195,22 +168,22 @@ public class EmailReceiver extends Thread{
 
 			URLName url = new URLName("pop3", pop3Host, 110, "", user, password);  //$NON-NLS-1$//$NON-NLS-2$
 			emailStore = (POP3Store) emailSession.getStore(url);
-			LOGGER.finest("Connecting to server " + pop3Host + " as " + user); //$NON-NLS-1$ //$NON-NLS-2$
+			LOGGER.finest("Importer: Connecting to server " + pop3Host + " as " + user); //$NON-NLS-1$ //$NON-NLS-2$
 			emailStore.connect(user, password);
-			LOGGER.finest("Connected..."); //$NON-NLS-1$
+			LOGGER.finest("Importer: Connected..."); //$NON-NLS-1$
 			
-			LOGGER.finest("Opening INBOX"); //$NON-NLS-1$
+			LOGGER.finest("Importer: Opening INBOX"); //$NON-NLS-1$
 			emailFolder = emailStore.getFolder("INBOX"); //$NON-NLS-1$
 			emailFolder.open(Folder.READ_WRITE);
-			LOGGER.finest("Opened..."); //$NON-NLS-1$
+			LOGGER.finest("Importer: Opened..."); //$NON-NLS-1$
 			
 			int emailCount = emailFolder.getMessageCount();//number of messages in INBOX
-			LOGGER.finest(emailCount + " messages found"); //$NON-NLS-1$
+			LOGGER.finest("Importer: " + emailCount + " messages found"); //$NON-NLS-1$
 			
 			if(emailCount > 0){
 				
 				//Loop through emails adding to DB
-				LOGGER.info("Reading " + emailCount + " emails..."); //$NON-NLS-1$ //$NON-NLS-2$
+				LOGGER.info("Importer: Reading " + emailCount + " emails..."); //$NON-NLS-1$ //$NON-NLS-2$
 				
 				for(int i = emailCount; i > 0; i--){
 					
@@ -218,7 +191,7 @@ public class EmailReceiver extends Thread{
 					
 					if(!message.isSet(Flags.Flag.DELETED) && !message.isSet(Flags.Flag.SEEN)){
 						
-						LOGGER.finest("Email: " + i); //$NON-NLS-1$
+						LOGGER.finest("Importer: Email: " + i); //$NON-NLS-1$
 						
 						/* Deals with null pointer in recipients[0] */
 						boolean skip = false;
@@ -229,7 +202,7 @@ public class EmailReceiver extends Thread{
 							recipients = message.getAllRecipients();
 						}catch(MessagingException e){
 							
-							LOGGER.warning("MESSAGING EXCEPTION: There was a problem getting this messages recipients, skipping message"); //$NON-NLS-1$
+							LOGGER.warning("Importer: MESSAGING EXCEPTION: There was a problem getting this messages recipients, skipping message"); //$NON-NLS-1$
 							skip = true;
 							
 						}
@@ -250,7 +223,7 @@ public class EmailReceiver extends Thread{
 								}
 								
 								toAddress = getAddress(toAddress);
-								LOGGER.finest("Sent To: " + toAddress); //$NON-NLS-1$
+								LOGGER.finest("Importer: Sent To: " + toAddress); //$NON-NLS-1$
 								
 							}
 							
@@ -277,7 +250,7 @@ public class EmailReceiver extends Thread{
 								fromAddress = getAddress(fromAddress);
 								
 								
-								LOGGER.finest("From: " + fromAddress); //$NON-NLS-1$
+								LOGGER.finest("Importer: From: " + fromAddress); //$NON-NLS-1$
 								
 							}
 							
@@ -316,44 +289,44 @@ public class EmailReceiver extends Thread{
 										message.setFlag(Flags.Flag.SEEN, true);
 										
 									if(message.isSet(Flags.Flag.DELETED))
-										LOGGER.finest("Marked for Deletion"); //$NON-NLS-1$
+										LOGGER.finest("Importer: Marked for Deletion"); //$NON-NLS-1$
 									
 								}else
-									LOGGER.warning("Unable to get message content for " + fromAddress); //$NON-NLS-1$
+									LOGGER.warning("Importer: Unable to get message content for " + fromAddress); //$NON-NLS-1$
 								
 							}else
-								LOGGER.info(fromAddress + "/" + toAddress + "\n" + messageContent);  //$NON-NLS-1$//$NON-NLS-2$
+								LOGGER.info("Importer: " + fromAddress + "/" + toAddress + "\n" + messageContent);  //$NON-NLS-1$//$NON-NLS-2$
 							
 						}
 					}
 					
 				}
 				
-				LOGGER.finest("Finished reading emails"); //$NON-NLS-1$
+				LOGGER.finest("Importer: Finished reading emails"); //$NON-NLS-1$
 				
 			}else
-				LOGGER.finest("Inbox Empty, nothing to do"); //$NON-NLS-1$
+				LOGGER.finest("Importer: Inbox Empty, nothing to do"); //$NON-NLS-1$
 			
 		} catch (NoSuchProviderException e) {
 			
 			e.printStackTrace();
-			LOGGER.warning("NoSuchProviderException"); //$NON-NLS-1$
+			LOGGER.warning("Importer: NoSuchProviderException"); //$NON-NLS-1$
 			
 		} catch (MessagingException e) {
 			
 			e.printStackTrace();
-			LOGGER.warning("MessagingException"); //$NON-NLS-1$
+			LOGGER.warning("Importer: MessagingException"); //$NON-NLS-1$
 			
 		} catch (IOException e) {
 		
-			LOGGER.warning("Error getting message content"); //$NON-NLS-1$
+			LOGGER.warning("Importer: Error getting message content"); //$NON-NLS-1$
 			e.printStackTrace();
 			
 		} finally {
 			
 			if(emailFolder != null && emailStore != null){
 				
-				LOGGER.finest("Closing connections..."); //$NON-NLS-1$
+				LOGGER.finest("Importer: Closing connections..."); //$NON-NLS-1$
 				
 				try{
 					
@@ -362,11 +335,11 @@ public class EmailReceiver extends Thread{
 					
 				}catch(MessagingException e){
 					
-					LOGGER.severe("Failed to close email store and commit changes"); //$NON-NLS-1$
+					LOGGER.severe("Importer: Failed to close email store and commit changes"); //$NON-NLS-1$
 					
 				}
 				
-				LOGGER.finest("Connections closed"); //$NON-NLS-1$
+				LOGGER.finest("Importer: Connections closed"); //$NON-NLS-1$
 				
 			}
 			
@@ -426,11 +399,11 @@ public class EmailReceiver extends Thread{
 		}catch(MessagingException e){
 			
 			e.printStackTrace();
-			LOGGER.warning("MessagingException"); //$NON-NLS-1$
+			LOGGER.warning("Importer: MessagingException"); //$NON-NLS-1$
 			
 		}catch(IOException e){
 			
-			LOGGER.warning("Error getting message content"); //$NON-NLS-1$
+			LOGGER.warning("Importer: Error getting message content"); //$NON-NLS-1$
 			e.printStackTrace();
 			
 		}
@@ -474,7 +447,7 @@ public class EmailReceiver extends Thread{
 			
 		}catch(Exception e){//For weird header stuff I want to catch and debug
 			
-			LOGGER.warning("Error with header: " + headerReceived); //$NON-NLS-1$
+			LOGGER.warning("Importer: Error with header: " + headerReceived); //$NON-NLS-1$
 			
 		}
 		
