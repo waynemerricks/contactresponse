@@ -2,15 +2,8 @@ package com.thevoiceasia.email;
 
 /* GENERAL */
 import java.io.*;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.text.*;
 import java.util.*;
-import java.util.logging.FileHandler;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /* EMAIL */
@@ -24,68 +17,34 @@ import org.apache.commons.validator.routines.EmailValidator;
 /* TVA STUFF */
 import com.thevoiceasia.database.*;
 import com.thevoiceasia.html.HTML2Text;
-import com.thevoiceasia.sms.XpressMS;
 
 
 public class EmailReceiver extends Thread{
 
 	/* STATIC SETTINGS */
 	private static final int EMAIL_CHECK_PERIOD = 60; //Time to check for emails in seconds
-	private static final Logger LOGGER = Logger.getLogger("com.thevoiceasia"); //$NON-NLS-1$
-	private static final Level LEVEL = Level.INFO;//Logging level of this class
+	private static final Logger LOGGER = Logger.getLogger("com.thevoiceasia.email"); //$NON-NLS-1$
 	private static final boolean DEBUG_MODE = false;
 	
 	/* CLASS VARS */
 	private DatabaseHelper database = null;
-	private String MAIL_SERVER, MAIL_USER, MAIL_PASSWORD, ARCHIVE_PATH;
-	private boolean archiveValid = false;
+	private String MAIL_SERVER, MAIL_USER, MAIL_PASSWORD;
+	private EmailReader reader = null;
 	
 	/**
 	 * Receives Email from the given email inbox (no subfolders)
-	 * @param dbHost MySQL Host
-	 * @param dbUser MySQL Username
-	 * @param dbPass MySQL Password
-	 * @param dbBase MySQL Database
 	 * @param mailHost Email Host
 	 * @param mailUser Email User
 	 * @param mailPass Email Password
-	 * @param emailStorePath Path to where email content should be archived
+	 * @param reader Reader object to pass messages on to
 	 */
-	public EmailReceiver(String dbHost, String dbUser, String dbPass, String dbBase, String mailHost,
-			String mailUser, String mailPass, String emailStorePath){
-		
-		database = new DatabaseHelper(dbHost, dbBase, dbUser, dbPass);
+	public EmailReceiver(String mailHost, String mailUser, String mailPass, 
+		EmailReader reader){
 		
 		MAIL_SERVER = mailHost;
 		MAIL_USER = mailUser;
 		MAIL_PASSWORD = mailPass;
-		ARCHIVE_PATH = emailStorePath;
-	
-		File directory = new File(ARCHIVE_PATH);
-		
-		if(directory.exists() && directory.isDirectory() && directory.canWrite())
-			archiveValid = true;
-		
-		setupLogging();
-		
-	}
-	
-	/**
-	 * Set the Logger object
-	 */
-	private void setupLogging(){
-		
-		LOGGER.setLevel(LEVEL);
-		
-		try{
-			
-			LOGGER.addHandler(new FileHandler("contactresponseincoming.log")); //$NON-NLS-1$
-			
-		}catch(IOException e){
-			
-			e.printStackTrace();
-			
-		}
+		this.reader = reader;
 		
 	}
 	
@@ -96,7 +55,7 @@ public class EmailReceiver extends Thread{
 		
 		boolean run = true;
 		
-		LOGGER.info("ContactResponse-Importer: Started on inbox " + MAIL_USER); //$NON-NLS-1$
+		LOGGER.info("Importer: Started on inbox " + MAIL_USER); //$NON-NLS-1$
 		
 		while(run){
 		
@@ -108,54 +67,19 @@ public class EmailReceiver extends Thread{
 			
 			try{
 				
-				LOGGER.finest("ContactResponse-Importer: Sleeping..."); //$NON-NLS-1$
+				LOGGER.finest("Importer: Sleeping..."); //$NON-NLS-1$
 				sleep(EMAIL_CHECK_PERIOD * 1000);
 				
 			}catch(InterruptedException e){
 				
 				run = false;
-				LOGGER.warning("ContactResponse-Importer: Interrupted!");
+				LOGGER.warning("Importer: Interrupted!"); //$NON-NLS-1$
 				
 			}
 			
 		}
 		
-		LOGGER.info("ContactResponse-Importer:  Stopped"); //$NON-NLS-1$
-		
-	}
-	
-	/**
-	 * Flag that indicates whether the archive for this object is valid and
-	 * has write permissions
-	 * @return true if all is good, false if things are bad
-	 */
-	public boolean isValidArchive(){
-		
-		return archiveValid;
-		
-	}
-	
-	/**
-	 * Entry point for Email Receiver
-	 * @param args 8 arguments expected:
-	 *   DB_HOST DB_USER DB_PASS DBASE MAIL_HOST MAIL_USER MAIL_PASS EMAIL_STORE_PATH
-	 */
-	public static void main(String[] args){
-		
-		if(args.length == 8){
-			EmailReceiver emr = new EmailReceiver(args[0], args[1], args[2], args[3], args[4], args[5],
-					args[6], args[7]);
-			
-			if(!emr.isValidArchive()){
-				System.out.println("Email Store Path invalid, doesn't exist or has no write permissions: " + args[7]);
-				System.exit(1);
-			}
-				
-			emr.start();
-		}else{
-			System.out.println("USAGE: DBHOST DBUSER DBPASS DBASE MAILHOST MAILUSER MAILPASS EMAILSTOREPATH");
-			System.exit(1);
-		}
+		LOGGER.info("Importer:  Stopped"); //$NON-NLS-1$
 		
 	}
 	
@@ -225,14 +149,14 @@ public class EmailReceiver extends Thread{
 		
 		if(addressFromEmail.contains("<") && addressFromEmail.endsWith(">")){ //$NON-NLS-1$ //$NON-NLS-2$
 			
-			name = addressFromEmail.split("<")[0].trim();
+			name = addressFromEmail.split("<")[0].trim(); //$NON-NLS-1$
 		
 			/* Sometimes email won't send with a "Name component"
 			 * Most of the time it is Name <address>
 			 * Other times its "Email Address" <address> so we need to check for this case here
 			 */
-			if(name.startsWith("\"") && name.endsWith("\"")){//Remove the pre/post "
-				
+			if(name.startsWith("\"") && name.endsWith("\"")){  //$NON-NLS-1$//$NON-NLS-2$
+				//Remove the pre/post "
 				name = name.substring(1);
 				name = name.substring(0, name.length() - 1);
 				
@@ -286,7 +210,7 @@ public class EmailReceiver extends Thread{
 			if(emailCount > 0){
 				
 				//Loop through emails adding to DB
-				LOGGER.info("Reading " + emailCount + " emails..."); //$NON-NLS-1$
+				LOGGER.info("Reading " + emailCount + " emails..."); //$NON-NLS-1$ //$NON-NLS-2$
 				
 				for(int i = emailCount; i > 0; i--){
 					
@@ -365,27 +289,16 @@ public class EmailReceiver extends Thread{
 							String subject = message.getSubject();
 							
 							if(subject == null)
-								subject = "";
+								subject = ""; //$NON-NLS-1$
 							
 							if(message.getContent() instanceof MimeMultipart){
 								
 								MimeMultipart msgContent = (MimeMultipart)message.getContent();
+								messageContent = getMessageContent(msgContent);
 								
-								if(!fromAddress.contains("@sms.xpressms.com"))
-									messageContent = prefixSubject(getMessageContent(msgContent), subject);
-								else
-									messageContent = parseSMS(getMessageContent(msgContent));
+							}else
+								messageContent = message.getContent().toString();
 								
-							}else{
-								
-								if(!fromAddress.contains("@sms.xpressms.com"))
-									messageContent = prefixSubject(message.getContent().toString(), subject);
-								else
-									messageContent = parseSMS(message.getContent().toString());
-									
-							}
-								
-							
 							//All messages in inbox should be processed and then deleted
 							if(!DEBUG_MODE){
 								
@@ -397,7 +310,7 @@ public class EmailReceiver extends Thread{
 								 */
 								if(messageContent != null){
 									
-									if(processEmail(headerDate, fromAddress, toAddress, contactName, messageContent))//Finished so mark message for deletion
+									if(reader.receiveEmail(headerDate, fromAddress, toAddress, contactName, messageContent, subject))//Finished so mark message for deletion
 										message.setFlag(Flags.Flag.DELETED, true);
 									else
 										message.setFlag(Flags.Flag.SEEN, true);
@@ -406,10 +319,10 @@ public class EmailReceiver extends Thread{
 										LOGGER.finest("Marked for Deletion"); //$NON-NLS-1$
 									
 								}else
-									LOGGER.warning("Unable to get message content for " + fromAddress);
+									LOGGER.warning("Unable to get message content for " + fromAddress); //$NON-NLS-1$
 								
 							}else
-								LOGGER.info(fromAddress + "/" + toAddress + "\n" + messageContent);
+								LOGGER.info(fromAddress + "/" + toAddress + "\n" + messageContent);  //$NON-NLS-1$//$NON-NLS-2$
 							
 						}
 					}
@@ -419,17 +332,17 @@ public class EmailReceiver extends Thread{
 				LOGGER.finest("Finished reading emails"); //$NON-NLS-1$
 				
 			}else
-				LOGGER.finest("Inbox Empty, nothing to do");
+				LOGGER.finest("Inbox Empty, nothing to do"); //$NON-NLS-1$
 			
 		} catch (NoSuchProviderException e) {
 			
 			e.printStackTrace();
-			LOGGER.warning("NoSuchProviderException");
+			LOGGER.warning("NoSuchProviderException"); //$NON-NLS-1$
 			
 		} catch (MessagingException e) {
 			
 			e.printStackTrace();
-			LOGGER.warning("MessagingException");
+			LOGGER.warning("MessagingException"); //$NON-NLS-1$
 			
 		} catch (IOException e) {
 		
@@ -449,7 +362,7 @@ public class EmailReceiver extends Thread{
 					
 				}catch(MessagingException e){
 					
-					LOGGER.severe("Failed to close email store and commit changes");
+					LOGGER.severe("Failed to close email store and commit changes"); //$NON-NLS-1$
 					
 				}
 				
@@ -459,40 +372,6 @@ public class EmailReceiver extends Thread{
 			
 		}
 
-	}
-
-	/**
-	 * Returns only the Message portion of the SMS message as provided by Express SMS
-	 * @param messageContent full SMS in plain text
-	 * @return just the message bit
-	 */
-	private String parseSMS(String messageContent) {
-		
-		return XpressMS.toMessage(messageContent);
-		
-	}
-
-	/**
-	 * Prefix subject as first line of plain text
-	 * @param text message content
-	 * @param subject subject of message
-	 * @return prepended text S:<subject goes here>\n<Message Content goes here>
-	 */
-	private String prefixSubject(String text, String subject) {
-		
-		if(text != null)
-			text = text.trim();
-		else
-			text = ""; //$NON-NLS-1$
-		
-		subject = subject.trim();
-		
-		//Prefix with subject if applicable
-		if(subject.length() > 0)
-			text = "S:" + subject + "\n" + text; //$NON-NLS-1$ //$NON-NLS-2$
-			
-		return text;
-		
 	}
 
 	/**
@@ -515,16 +394,16 @@ public class EmailReceiver extends Thread{
 			
 				Part messageBody = msgContent.getBodyPart(i);
 					
-				if(messageBody.isMimeType("text/plain")){
+				if(messageBody.isMimeType("text/plain")){ //$NON-NLS-1$
 						
 					text = messageBody.getContent().toString();
 					found = true;
 						
 				}else if(text == null && html == null){
 					
-					if(messageBody.isMimeType("text/html"))
+					if(messageBody.isMimeType("text/html")) //$NON-NLS-1$
 						html = HTML2Text.convert(messageBody.getContent().toString());//Use Jericho to render to plain text
-					else if(messageBody.isMimeType("multipart/alternative")){
+					else if(messageBody.isMimeType("multipart/alternative")){ //$NON-NLS-1$
 						
 						text = getMessageContent((MimeMultipart)messageBody.getContent());
 						found = true;
@@ -547,7 +426,7 @@ public class EmailReceiver extends Thread{
 		}catch(MessagingException e){
 			
 			e.printStackTrace();
-			LOGGER.warning("MessagingException");
+			LOGGER.warning("MessagingException"); //$NON-NLS-1$
 			
 		}catch(IOException e){
 			
@@ -557,408 +436,6 @@ public class EmailReceiver extends Thread{
 		}
 		
 		return text;
-		
-	}
-
-	/**
-	 * Processes the email details and puts it into the messages table, archiving the content
-	 * to the message archive
-	 * @param sentDate Date email was sent
-	 * @param fromAddress Email address this was sent from
-	 * @param toAddress Address this email was sent to
-	 * @param contactName Name of contact or null if none
-	 * @return true if processed successfully
-	 */
-	private boolean processEmail(Date sentDate, String fromAddress, String toAddress,
-			String contactName, String messageContent) {
-		
-		boolean success = false;
-		
-		String type = "E";
-		boolean sms = false;
-		
-		if(fromAddress.contains("@sms.xpressms.com")){
-		
-			sms = true;
-			type = "S";
-			
-		}
-		
-		//We can still have html here if the email registered plain text but sent html
-		//So strip it
-		messageContent = HTML2Text.convert(messageContent);
-		int existingContactId = getContactId(fromAddress, contactName, sms);
-		String preview = messageContent.replaceAll("\n", "  ").replaceAll("\r", "");
-		
-		if(preview.startsWith("S:"))//Remove Subject prefix don't need it in preview
-			preview = preview.substring(2);
-		
-		if(preview.length() > 50)
-			preview = preview.substring(0, 47) + "...";
-		
-		String SQL = "INSERT INTO `messages` (`owner`, `type`, `direction`, `preview`) VALUES (?, ?, ?, ?)";
-		
-		Connection mysql = database.getConnection();
-		PreparedStatement insertMessage = null;
-		ResultSet insertIDs = null;
-		
-		try{
-			
-			//Bind all variables to statement
-			insertMessage = mysql.prepareStatement(SQL, Statement.RETURN_GENERATED_KEYS);
-			insertMessage.setInt(1, existingContactId);
-			insertMessage.setString(2, type);
-			insertMessage.setString(3, "I");
-			insertMessage.setString(4, preview);
-			
-			//Execute it
-			int rows = insertMessage.executeUpdate();
-			
-			if(rows > 0){
-			
-				LOGGER.finest("Successfully added message from " + fromAddress);
-				insertIDs = insertMessage.getGeneratedKeys();
-				
-				while(insertIDs.next()){
-				
-					int id = insertIDs.getInt(1);
-					success = writeMessageToArchive(id, messageContent);
-					
-					if(!success){
-						
-						LOGGER.warning("Error writing to archive, removing message from database: " + fromAddress);
-						removeMessageFromDatabase(id);
-						
-					}
-				
-				}
-				
-				if(success)
-					LOGGER.finest("Successfully archived message from " + fromAddress);
-				else
-					LOGGER.severe("Failed to archive message from " + fromAddress);
-				
-			}
-			
-		}catch(SQLException e){
-			
-			e.printStackTrace();
-			LOGGER.severe("SQL Error while inserting message");
-			
-		}finally{
-			
-			if(insertIDs != null){
-            	try{
-            		insertIDs.close();
-            		insertIDs = null;
-            	}catch(Exception e){}
-            }
-            	
-            if(insertMessage != null){//Close Statement
-            	try{
-            		insertMessage.close();
-            		insertMessage = null;
-            	}catch(Exception e){}
-            }
-        	
-		}
-		
-		return success;
-		
-	}
-
-	/**
-	 * Deletes a message from the message table.
-	 * Called when writeToArchive() fails so we don't have a
-	 * message in the table that doesn't exist in archive
-	 * @param id id to delete
-	 */
-	private void removeMessageFromDatabase(int id) {
-		
-		LOGGER.info("Deleting message ID: " + id);
-		String SQL = "DELETE FROM `messages` WHERE `id` = " + id;
-		
-		Connection mysql = database.getConnection();
-		Statement deleteMessage = null;
-		
-		try{
-			
-			deleteMessage = mysql.createStatement();
-			
-			//Execute it
-			deleteMessage.executeUpdate(SQL);
-			
-		}catch(SQLException e){
-			
-			e.printStackTrace();
-			LOGGER.severe("SQL Error while inserting message");
-			
-		}finally{
-			
-			if(deleteMessage != null){//Close Statement
-            	try{
-            		deleteMessage.close();
-            		deleteMessage = null;
-            	}catch(Exception e){}
-            }
-        	
-		}
-		
-	}
-
-	/**
-	 * Writes the message content to a text file in the ARCHIVE location
-	 * @param fileID name of file and message record id it relates to
-	 * @param messageContent Content to go in the file
-	 * @return true if we succeeded in writing the file
-	 */
-	private boolean writeMessageToArchive(int fileID, String messageContent) {
-		
-		boolean created = false;
-		
-		String path = ARCHIVE_PATH + System.getProperty("file.separator") + fileID;
-		
-		File temp = new File(path);
-		
-		try {
-			if(!temp.exists() && temp.createNewFile()){
-				
-				try{
-					
-					PrintWriter writer = new PrintWriter(path, "UTF-8");
-					writer.print(messageContent);
-					writer.close();
-					
-					created = true;
-					
-				}catch(UnsupportedEncodingException e){
-					
-					e.printStackTrace();
-					LOGGER.severe("Can't encode UTF8 file for " + path);
-					
-				}catch(FileNotFoundException e){
-					
-					e.printStackTrace();
-					LOGGER.severe("Can't write file " + path);
-					
-				}
-				
-			}
-		} catch (IOException e) {
-			
-			e.printStackTrace();
-			LOGGER.severe("Can't create new file " + path);
-			
-		}
-		
-		return created;
-		
-	}
-
-	/**
-	 * Gets a contact id from the contacts table, if no contact exists, it will be created
-	 * @param fromAddress Address to lookup
-	 * @param name Name of contact or null if none
-	 * @param smsMessage if this is an sms message it searches by phone and not email
-	 * @return id of existing or new contact
-	 */
-	private int getContactId(String fromAddress, String name, boolean smsMessage) {
-		
-		int id = -1;
-		
-		String SQL = "SELECT `id`, `name` FROM `contacts` WHERE `email` = ?";
-		
-		if(smsMessage){
-			
-			SQL = "SELECT `id` FROM `contacts` WHERE `phone` LIKE ?";
-			fromAddress = "%" + fromAddress.split("@")[0];
-			
-		}
-		
-		Connection mysql = database.getConnection();
-		PreparedStatement selectContact = null;
-		ResultSet contactIDs = null;
-		
-		try{
-			
-			//Bind all variables to statement
-			selectContact = mysql.prepareStatement(SQL);
-			selectContact.setString(1, fromAddress);
-			
-			//Execute it
-			if(selectContact.execute()){
-			
-				contactIDs = selectContact.getResultSet();
-				
-				while(contactIDs.next()){
-					
-					id = contactIDs.getInt(1);
-					
-					if(name != null && contactIDs.getString(2).equals("Unknown"))
-						updateName(id, name);
-					
-				}
-				
-				if(id != -1)
-					LOGGER.finest("Found contact ID For: " + fromAddress);
-				else{
-					if(smsMessage)
-						fromAddress = fromAddress.substring(1);//Remove prefix of % for like lookup
-					
-					id = createNewContact(fromAddress, name, smsMessage);
-				}
-			}
-			
-		}catch(SQLException e){
-			
-			e.printStackTrace();
-			LOGGER.severe("SQL Error while looking up contact ID for " + fromAddress);
-			
-		}finally{
-			
-			if(contactIDs != null){
-            	try{
-            		contactIDs.close();
-            		contactIDs = null;
-            	}catch(Exception e){}
-            }
-            	
-            if(selectContact != null){//Close Statement
-            	try{
-            		selectContact.close();
-            		selectContact = null;
-            	}catch(Exception e){}
-            }
-        	
-		}
-		
-		return id;
-		
-	}
-
-	/**
-	 * Sets the name of the given contact
-	 * @param id id of record to change
-	 * @param name name to change it to
-	 * @return true if successfully updated
-	 */
-	private boolean updateName(int id, String name) {
-		
-		boolean success = false;
-		String SQL = "UPDATE `contacts` SET `name` = ?, `updated` = ? WHERE `id` = ?";
-		
-		LOGGER.info("Updating Name for " + id + " to " + name);
-		
-		
-		Connection mysql = database.getConnection();
-		PreparedStatement updateContact = null;
-		
-		try{
-			
-			//Bind all variables to statement
-			updateContact = mysql.prepareStatement(SQL);
-			updateContact.setString(1, name);
-			updateContact.setString(2, new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
-			updateContact.setInt(3, id);
-			
-			//Execute it
-			int rows = updateContact.executeUpdate();
-			
-			if(rows > 0)
-				success = true;
-				
-		}catch(SQLException e){
-			
-			e.printStackTrace();
-			LOGGER.severe("SQL Error while updating name on contact " + id + " to " + name);
-			
-		}finally{
-			
-			if(updateContact != null){//Close Statement
-            	try{
-            		updateContact.close();
-            		updateContact = null;
-            	}catch(Exception e){}
-            }
-        	
-		}
-		
-		return success;
-		
-	}
-
-	/**
-	 * Creates a new contact
-	 * @param fromAddress either phone or sms number to create with
-	 * @param name Name of contact to save
-	 * @param smsMessage if sms then we'll insert the fromAddress into the phone field
-	 * else we'll just enter it as an email address
-	 * @return id of inserted contact record
-	 */
-	private int createNewContact(String fromAddress, String name, boolean smsMessage) {
-		
-		int id = -1;
-		
-		String SQL = "INSERT INTO `contacts` (`email`) VALUES (?)";
-		
-		if(name != null && !smsMessage)
-			SQL = "INSERT INTO `contacts` (`email`, `name`) VALUES (?, ?)";
-		else if(name == null && smsMessage)
-			SQL = "INSERT INTO `contacts` (`phone`) VALUES (?)";
-		else if(name != null && smsMessage) //I think name will always be null for an SMS but just in case
-			SQL = "INSERT INTO `contacts` (`phone`, `name`) VALUES (?, ?)";
-			
-		LOGGER.info("Creating new contact for " + fromAddress);
-		
-		Connection mysql = database.getConnection();
-		PreparedStatement insertContact = null;
-		ResultSet contactIDs = null;
-		
-		try{
-			
-			//Bind all variables to statement
-			insertContact = mysql.prepareStatement(SQL, Statement.RETURN_GENERATED_KEYS);
-			insertContact.setString(1, fromAddress);
-			
-			if(name != null)
-				insertContact.setString(2, name);
-			
-			//Execute it
-			int rows = insertContact.executeUpdate();
-			
-			if(rows > 0){
-			
-				contactIDs = insertContact.getGeneratedKeys();
-				
-				while(contactIDs.next())
-					id = contactIDs.getInt(1);
-				
-			}
-			
-		}catch(SQLException e){
-			
-			e.printStackTrace();
-			LOGGER.severe("SQL Error while creating new contact for " + fromAddress);
-			
-		}finally{
-			
-			if(contactIDs != null){
-            	try{
-            		contactIDs.close();
-            		contactIDs = null;
-            	}catch(Exception e){}
-            }
-            	
-            if(insertContact != null){//Close Statement
-            	try{
-            		insertContact.close();
-            		insertContact = null;
-            	}catch(Exception e){}
-            }
-        	
-		}
-		
-		return id;
 		
 	}
 
@@ -997,7 +474,7 @@ public class EmailReceiver extends Thread{
 			
 		}catch(Exception e){//For weird header stuff I want to catch and debug
 			
-			LOGGER.warning("Error with header: " + headerReceived);
+			LOGGER.warning("Error with header: " + headerReceived); //$NON-NLS-1$
 			
 		}
 		
