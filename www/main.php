@@ -61,21 +61,30 @@
               $g = 131;
               $b = 23;
 
-              if($contactsPending[$i]['waiting'] > 99){
+              $waiting = $contactsPending[$i]['waiting'];
 
-                $r = 131;
-                $g = 31;
-                $b = 1;
+              if($waiting > 99){
 
-              }else if($contactsPending[$i]['waiting'] > 1){
+                $r = 172;
+                $g = 0;
+                $b = 0;
 
-                $r = $r + $contactsPending[$i]['waiting'];
-                $g = $g - $contactsPending[$i]['waiting'];
-                $b = $b - $contactsPending[$i]['waiting'] / 5;
+              }else if($waiting > 1 && $waiting < 51){
+
+                $r += round($waiting * 4.57);
+                $g += round($waiting * 1.53);
+                $b += round($waiting * 0.28);
+
+              }else if($waiting != 1){
+
+                //Start from yellow
+                $r = 255 + round($waiting * -1.69);
+                $g = 206 + round($waiting * -4.2);
+                $b = 9 + round($waiting * -0.18);
 
               }
 
-              $rgb = $r . ', ' . $g . ', ' . round($b);
+              $rgb = $r . ', ' . $g . ', ' . $b;
 
               if($contactsPending[$i]['waiting'] > 99)
                 $contactsPending[$i]['waiting'] = '++';
