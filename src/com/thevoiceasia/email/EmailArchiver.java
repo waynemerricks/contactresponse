@@ -150,12 +150,12 @@ public class EmailArchiver extends Thread implements EmailReader {
 					archiver.getEmails();
 					archiver.disconnectFromDB();
 					
-					LOGGER.finest("Archiver: Sleeping for " + EMAIL_CHECK_PERIOD);
+					LOGGER.finest("Archiver: Sleeping for " + EMAIL_CHECK_PERIOD); //$NON-NLS-1$
 					sleep(1000 * EMAIL_CHECK_PERIOD);
 					
 				} catch (InterruptedException e) {
 					
-					LOGGER.info("Archiver: Interrupted, exiting");
+					LOGGER.info("Archiver: Interrupted, exiting"); //$NON-NLS-1$
 					e.printStackTrace();
 					go = false;
 					
@@ -221,12 +221,12 @@ public class EmailArchiver extends Thread implements EmailReader {
 		
 		int id = -1;
 		
-		String SQL = "SELECT `id`, `name` FROM `contacts` WHERE `email` = ?";
+		String SQL = "SELECT `id`, `name` FROM `contacts` WHERE `email` = ?"; //$NON-NLS-1$
 		
 		if(smsMessage){
 			
-			SQL = "SELECT `id` FROM `contacts` WHERE `phone` LIKE ?";
-			fromAddress = "%" + fromAddress.split("@")[0];
+			SQL = "SELECT `id` FROM `contacts` WHERE `phone` LIKE ?"; //$NON-NLS-1$
+			fromAddress = "%" + fromAddress.split("@")[0];  //$NON-NLS-1$//$NON-NLS-2$
 			
 		}
 		
@@ -249,13 +249,13 @@ public class EmailArchiver extends Thread implements EmailReader {
 					
 					id = contactIDs.getInt(1);
 					
-					if(name != null && contactIDs.getString(2).equals("Unknown"))
+					if(name != null && contactIDs.getString(2).equals("Unknown")) //$NON-NLS-1$
 						updateName(id, name);
 					
 				}
 				
 				if(id != -1)
-					LOGGER.finest("Found contact ID For: " + fromAddress);
+					LOGGER.finest("Found contact ID For: " + fromAddress); //$NON-NLS-1$
 				else{
 					if(smsMessage)
 						fromAddress = fromAddress.substring(1);//Remove prefix of % for like lookup
@@ -267,7 +267,7 @@ public class EmailArchiver extends Thread implements EmailReader {
 		}catch(SQLException e){
 			
 			e.printStackTrace();
-			LOGGER.severe("SQL Error while looking up contact ID for " + fromAddress);
+			LOGGER.severe("SQL Error while looking up contact ID for " + fromAddress); //$NON-NLS-1$
 			
 		}finally{
 			
@@ -303,16 +303,16 @@ public class EmailArchiver extends Thread implements EmailReader {
 		
 		int id = -1;
 		
-		String SQL = "INSERT INTO `contacts` (`email`) VALUES (?)";
+		String SQL = "INSERT INTO `contacts` (`email`) VALUES (?)"; //$NON-NLS-1$
 		
 		if(name != null && !smsMessage)
-			SQL = "INSERT INTO `contacts` (`email`, `name`) VALUES (?, ?)";
+			SQL = "INSERT INTO `contacts` (`email`, `name`) VALUES (?, ?)"; //$NON-NLS-1$
 		else if(name == null && smsMessage)
-			SQL = "INSERT INTO `contacts` (`phone`) VALUES (?)";
+			SQL = "INSERT INTO `contacts` (`phone`) VALUES (?)"; //$NON-NLS-1$
 		else if(name != null && smsMessage) //I think name will always be null for an SMS but just in case
-			SQL = "INSERT INTO `contacts` (`phone`, `name`) VALUES (?, ?)";
+			SQL = "INSERT INTO `contacts` (`phone`, `name`) VALUES (?, ?)"; //$NON-NLS-1$
 			
-		LOGGER.info("Creating new contact for " + fromAddress);
+		LOGGER.info("Creating new contact for " + fromAddress); //$NON-NLS-1$
 		
 		Connection mysql = database.getConnection();
 		PreparedStatement insertContact = null;
@@ -342,7 +342,7 @@ public class EmailArchiver extends Thread implements EmailReader {
 		}catch(SQLException e){
 			
 			e.printStackTrace();
-			LOGGER.severe("SQL Error while creating new contact for " + fromAddress);
+			LOGGER.severe("SQL Error while creating new contact for " + fromAddress); //$NON-NLS-1$
 			
 		}finally{
 			
@@ -375,9 +375,9 @@ public class EmailArchiver extends Thread implements EmailReader {
 	private boolean updateName(int id, String name) {
 		
 		boolean success = false;
-		String SQL = "UPDATE `contacts` SET `name` = ?, `updated` = ? WHERE `id` = ?";
+		String SQL = "UPDATE `contacts` SET `name` = ?, `updated` = ? WHERE `id` = ?"; //$NON-NLS-1$
 		
-		LOGGER.info("Updating Name for " + id + " to " + name);
+		LOGGER.info("Updating Name for " + id + " to " + name); //$NON-NLS-1$ //$NON-NLS-2$
 		
 		
 		Connection mysql = database.getConnection();
@@ -388,7 +388,8 @@ public class EmailArchiver extends Thread implements EmailReader {
 			//Bind all variables to statement
 			updateContact = mysql.prepareStatement(SQL);
 			updateContact.setString(1, name);
-			updateContact.setString(2, new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
+			updateContact.setString(2, new SimpleDateFormat(
+					"yyyyMMddHHmmss").format(new Date())); //$NON-NLS-1$
 			updateContact.setInt(3, id);
 			
 			//Execute it
@@ -400,7 +401,8 @@ public class EmailArchiver extends Thread implements EmailReader {
 		}catch(SQLException e){
 			
 			e.printStackTrace();
-			LOGGER.severe("SQL Error while updating name on contact " + id + " to " + name);
+			LOGGER.severe("SQL Error while updating name on contact " + id + //$NON-NLS-1$
+					" to " + name);  //$NON-NLS-1$
 			
 		}finally{
 			
@@ -427,7 +429,8 @@ public class EmailArchiver extends Thread implements EmailReader {
 		
 		boolean created = false;
 		
-		String path = ARCHIVE_PATH + System.getProperty("file.separator") + fileID;
+		String path = ARCHIVE_PATH + System.getProperty("file.separator") +  //$NON-NLS-1$
+				fileID;
 		
 		File temp = new File(path);
 		
@@ -436,7 +439,7 @@ public class EmailArchiver extends Thread implements EmailReader {
 				
 				try{
 					
-					PrintWriter writer = new PrintWriter(path, "UTF-8");
+					PrintWriter writer = new PrintWriter(path, "UTF-8"); //$NON-NLS-1$
 					writer.print(messageContent);
 					writer.close();
 					
@@ -445,12 +448,12 @@ public class EmailArchiver extends Thread implements EmailReader {
 				}catch(UnsupportedEncodingException e){
 					
 					e.printStackTrace();
-					LOGGER.severe("Can't encode UTF8 file for " + path);
+					LOGGER.severe("Can't encode UTF8 file for " + path); //$NON-NLS-1$
 					
 				}catch(FileNotFoundException e){
 					
 					e.printStackTrace();
-					LOGGER.severe("Can't write file " + path);
+					LOGGER.severe("Can't write file " + path); //$NON-NLS-1$
 					
 				}
 				
@@ -458,7 +461,7 @@ public class EmailArchiver extends Thread implements EmailReader {
 		} catch (IOException e) {
 			
 			e.printStackTrace();
-			LOGGER.severe("Can't create new file " + path);
+			LOGGER.severe("Can't create new file " + path); //$NON-NLS-1$
 			
 		}
 		
@@ -474,8 +477,8 @@ public class EmailArchiver extends Thread implements EmailReader {
 	 */
 	private void removeMessageFromDatabase(int id) {
 		
-		LOGGER.info("Deleting message ID: " + id);
-		String SQL = "DELETE FROM `messages` WHERE `id` = " + id;
+		LOGGER.info("Deleting message ID: " + id); //$NON-NLS-1$
+		String SQL = "DELETE FROM `messages` WHERE `id` = " + id; //$NON-NLS-1$
 		
 		Connection mysql = database.getConnection();
 		Statement deleteMessage = null;
@@ -490,7 +493,7 @@ public class EmailArchiver extends Thread implements EmailReader {
 		}catch(SQLException e){
 			
 			e.printStackTrace();
-			LOGGER.severe("SQL Error while inserting message");
+			LOGGER.severe("SQL Error while inserting message"); //$NON-NLS-1$
 			
 		}finally{
 			

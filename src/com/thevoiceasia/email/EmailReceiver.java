@@ -161,14 +161,17 @@ public class EmailReceiver extends Thread{
 		try {
 			
 			Properties properties = new Properties();
-			properties.setProperty("mail.pop3.ssl.socketFactory.class", "com.thevoiceasia.email.AlwaysTrustSSLContextFactory");  //$NON-NLS-1$//$NON-NLS-2$
+			properties.setProperty("mail.pop3.ssl.socketFactory.class", //$NON-NLS-1$
+					"com.thevoiceasia.email.AlwaysTrustSSLContextFactory");  //$NON-NLS-1$
 			properties.setProperty("mail.pop3.ssl.socketFactory.port", "110"); //$NON-NLS-1$ //$NON-NLS-2$
 			properties.setProperty("mail.pop3.starttls.enable", "true");  //$NON-NLS-1$//$NON-NLS-2$
 			Session emailSession = Session.getDefaultInstance(properties);
 
-			URLName url = new URLName("pop3", pop3Host, 110, "", user, password);  //$NON-NLS-1$//$NON-NLS-2$
+			URLName url = new URLName("pop3", pop3Host, 110, "", user, //$NON-NLS-1$//$NON-NLS-2$
+					password);  
 			emailStore = (POP3Store) emailSession.getStore(url);
-			LOGGER.finest("Importer: Connecting to server " + pop3Host + " as " + user); //$NON-NLS-1$ //$NON-NLS-2$
+			LOGGER.finest("Importer: Connecting to server " + pop3Host + //$NON-NLS-1$
+					" as " + user); //$NON-NLS-1$ 
 			emailStore.connect(user, password);
 			LOGGER.finest("Importer: Connected..."); //$NON-NLS-1$
 			
@@ -178,7 +181,7 @@ public class EmailReceiver extends Thread{
 			LOGGER.finest("Importer: Opened..."); //$NON-NLS-1$
 			
 			int emailCount = emailFolder.getMessageCount();//number of messages in INBOX
-			LOGGER.finest("Importer: " + emailCount + " messages found"); //$NON-NLS-1$
+			LOGGER.finest("Importer: " + emailCount + " messages found"); //$NON-NLS-1$ //$NON-NLS-2$
 			
 			if(emailCount > 0){
 				
@@ -189,7 +192,8 @@ public class EmailReceiver extends Thread{
 					
 					Message message = emailFolder.getMessage(i);
 					
-					if(!message.isSet(Flags.Flag.DELETED) && !message.isSet(Flags.Flag.SEEN)){
+					if(!message.isSet(Flags.Flag.DELETED) && !message.isSet(
+							Flags.Flag.SEEN)){
 						
 						LOGGER.finest("Importer: Email: " + i); //$NON-NLS-1$
 						
@@ -199,7 +203,9 @@ public class EmailReceiver extends Thread{
 						Address[] recipients = null;
 						
 						try{
+							
 							recipients = message.getAllRecipients();
+							
 						}catch(MessagingException e){
 							
 							LOGGER.warning("Importer: MESSAGING EXCEPTION: There was a problem getting this messages recipients, skipping message"); //$NON-NLS-1$
@@ -295,9 +301,10 @@ public class EmailReceiver extends Thread{
 									LOGGER.warning("Importer: Unable to get message content for " + fromAddress); //$NON-NLS-1$
 								
 							}else
-								LOGGER.info("Importer: " + fromAddress + "/" + toAddress + "\n" + messageContent);  //$NON-NLS-1$//$NON-NLS-2$
+								LOGGER.info("Importer: " + fromAddress + "/" + toAddress + "\n" + messageContent);  //$NON-NLS-1$//$NON-NLS-2$ //$NON-NLS-3$
 							
 						}
+						
 					}
 					
 				}
