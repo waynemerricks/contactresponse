@@ -35,6 +35,7 @@
     <link rel="stylesheet" type="text/css" href="css/crs.css">
     <link rel="stylesheet" type="text/css" href="css/crs_viewPending.css">
     <link rel="stylesheet" type="text/css" href="css/menu.css">
+    <script type="text/javascript" src="includes/jquery-2.1.1.min.js"></script>
     <script type="text/javascript">
       /** JS Sets this contact as auto having an auto reply
        * Will archive all but the last message, last one gets the replied status
@@ -42,10 +43,12 @@
        */
       function autoReply(template, contact, newestID){
 
-        //JQuery goes here
-        alert("Template: " + template + "\n" +
-              "Contact: " + contact + "\n" +
-              "Newest: " + newestID);
+        //JQuery POST to autoreply.php
+        $.post( "autoreply.php", { template: template, contact: contact, newest: newestID })
+          .done(function( data ) {
+            if(data == 'SUCCESS')//It worked so redirect to inbox
+              window.location='main.php';
+          });
 
       }
 
