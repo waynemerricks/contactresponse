@@ -55,7 +55,11 @@
     <div class="pending">
       <table class="pending">
         <?php if(sizeof($pendingMessages) == 0){ ?>
-          <tr><td class="fullWidth" colspan="3">There are no messages for this contact</td></tr>
+          <tr>
+            <td class="fullWidth" colspan="3">
+              There are no messages for this contact
+            </td>
+          </tr>
         <?php
           } else {
 

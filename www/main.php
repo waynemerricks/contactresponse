@@ -116,7 +116,20 @@
               <a href="viewPending.php?id=<?php echo $contactsPending[$i]['id']; ?>">
                 <?php echo $contactsPending[$i]['preview']; ?>
               </a>
-              <div class="quickTools"><a href="#">Generic</a><a href="#">Prayer</a><a href="#">Song</a><a href="#">Competition</a><a href="#"><img alt="Mark as Junk" src="images/junk.png" /></a></div>
+              <div class="quickTools">
+                <a href="javascript:void(0)">
+                  <img alt="Generic" src="images/toolgeneric.png" />
+                </a>
+                <a href="javascript:void(0)">
+                  <img alt="Prayer" src="images/prayer.png" />
+                </a><img alt="Song" src="images/song.png" />
+                <a href="javascript:void(0)">
+                  <img alt="Competition" src="images/competition.png" />
+                </a>
+                <a href="javascript:void(0)">
+                  <img alt="Mark as Junk" src="images/junk.png" />
+                </a>
+              </div>
             </td>
           </tr>
         <?php
