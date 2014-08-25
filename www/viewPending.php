@@ -37,18 +37,31 @@
     <link rel="stylesheet" type="text/css" href="css/menu.css">
     <script type="text/javascript" src="includes/jquery-2.1.1.min.js"></script>
     <script type="text/javascript">
+      /** GLOBALS **/
+      var disableReplies = false;
+
       /** JS Sets this contact as auto having an auto reply
        * Will archive all but the last message, last one gets the replied status
        * Sends an auto reply based on today's date and the category selected
        */
       function autoReply(template, contact, newestID){
 
-        //JQuery POST to autoreply.php
-        $.post( "autoreply.php", { template: template, contact: contact, newest: newestID })
-          .done(function( data ) {
-            if(data == 'SUCCESS')//It worked so redirect to inbox
-              window.location='main.php';
-          });
+        if(!disableReplies){
+
+          //JQuery POST to autoreply.php
+          $.post( "autoreply.php", { template: template, contact: contact, newest: newestID })
+            .done(function( data ) {
+              if(data == 'SUCCESS')//It worked so redirect to inbox
+                window.location='main.php';
+              else alert(data);
+            });
+
+        }else{
+
+          alert('You have a manual reply pending, this has been disabled');
+          return false;
+
+        }
 
       }
 
@@ -57,10 +70,23 @@
        * to default D status and back into your inbox */
       function manualReply(replyType, contact, newestID){
 
-        //JQuery goes here
-        alert("Type: " + replyType + "\n" +
-              "Contact: " + contact + "\n" +
-              "Newest: " + newestID);
+        if(!disableReplies){
+
+          //JQuery POST to manualreply.php
+          $.post( "manualreply.php", { type: replyType, contact: contact, newest: newestID })
+            .done(function( data ) {
+              if(data == 'SUCCESS'){//It worked so redirect to inbox
+                disableReplies = true;
+                alert('Messages have been made inactive' + "\n" + 'You have 30minutes to reply before they will go back to your inbox');
+              }else alert(data);
+            });
+
+        }else{
+
+          alert('You have a manual reply pending, this has been disabled');
+          return false;
+
+        }
 
       }
 
@@ -68,9 +94,13 @@
        * from this person's inbox */
        function delegate(contact, delegate){
 
-         //JQuery goes here
-         alert("Contact: " + contact + "\n" +
-               "Delegate: " + delegate);
+         //JQuery POST to delegate.php
+         $.post( "delegate.php", { contact: contact, user: delegate })
+            .done(function( data ) {
+              if(data == 'SUCCESS')//It worked so redirect to inbox
+                window.location='main.php';
+              else alert(data);
+            });
 
        }
     </script>
@@ -151,9 +181,15 @@
         <li class="homeButton"><a href="main.php"></a></li>
         <li><a href="#">Manual Reply</a>
           <ul class="dropup">
-            <li><a href="mailto:<?php echo $_GET['id']; ?>@crs.internal?subject=Type%20Your%20Subject%20Here&body=Type%20Your%20Message%20here" onclick="manualReply('E', '<?php echo $_GET['id']; ?>', '<?php echo $lastMessageID; ?>')">Email</a></li>
-            <li><a href="mailto:<?php echo $_GET['id']; ?>@crs.internal?subject=Subject%20Will%20Be%20Ignored&body=Type%20Your%20SMS%20here" onclick="manualReply('S', '<?php echo $_GET['id']; ?>', '<?php echo $lastMessageID; ?>')">SMS</a></li>
-            <li><a href="mailto:<?php echo $_GET['id']; ?>@crs.internal?subject=Subject%20Will%20Be%20Ignored&body=Type%20Your%20Letter%20here" onclick="manualReply('L', '<?php echo $_GET['id']; ?>', '<?php echo $lastMessageID; ?>')">Letter</a></li>
+            <?php if($contact->hasEmail()){ ?>
+              <li><a href="mailto:<?php echo $_GET['id']; ?>@crs.internal?subject=Type%20Your%20Subject%20Here&body=Type%20Your%20Message%20here" onclick="return manualReply('E', '<?php echo $_GET['id']; ?>', '<?php echo $lastMessageID; ?>')">Email</a></li>
+            <?php } ?>
+            <?php if($contact->hasPhoneNumber()){ ?>
+              <li><a href="mailto:<?php echo $_GET['id']; ?>@crs.internal?subject=Subject%20Will%20Be%20Ignored&body=Type%20Your%20SMS%20here" onclick="return manualReply('S', '<?php echo $_GET['id']; ?>', '<?php echo $lastMessageID; ?>')">SMS</a></li>
+            <?php } ?>
+            <?php if($contact->hasPostalAddress()){ ?>
+              <li><a href="mailto:<?php echo $_GET['id']; ?>@crs.internal?subject=Subject%20Will%20Be%20Ignored&body=Type%20Your%20Letter%20here" onclick="return manualReply('L', '<?php echo $_GET['id']; ?>', '<?php echo $lastMessageID; ?>')">Letter</a></li>
+            <?php } ?>
           </ul>
         </li>
         <li><a href="#">Auto Reply As...</a>
@@ -167,17 +203,19 @@
             <?php } ?>
           </ul>
         </li>
-        <li><a href="#">Delegate to...</a>
-          <ul class="dropup">
-           <?php foreach($delegates as $user){ ?>
-              <li>
-                <a href="javascript:void(0)" onclick="delegate('<?php echo $_GET['id']; ?>', '<?php echo getLoggedInUserID(); ?>')">
-                  <?php echo $user['name']; ?>
-                </a>
-              </li>
-            <?php } ?>
-          </ul>
-        </li>
+        <?php if(canDelegate() === TRUE){ ?>
+          <li><a href="#">Delegate to...</a>
+            <ul class="dropup">
+             <?php foreach($delegates as $user){ ?>
+                <li>
+                  <a href="javascript:void(0)" onclick="delegate('<?php echo $_GET['id']; ?>', '<?php echo $user['id']; ?>')">
+                    <?php echo $user['name']; ?>
+                  </a>
+                </li>
+              <?php } ?>
+            </ul>
+          </li>
+        <?php } ?>
         <li class="right"><a href="logout.php">Logout</a></li>
       </ul>
     </div>
