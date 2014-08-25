@@ -17,6 +17,22 @@
   }
 
   /**
+   * Returns true if this user can delegate to other helpers
+   */
+  function canDelegate(){
+
+    $delegate = FALSE;
+
+    if(isset($_SESSION['user']['permissions']) && (in_array('CAN_DELEGATE_UNDERLING',
+          $_SESSION['user']['permissions']) || in_array('CAN_DELEGATE_ALL',
+          $_SESSION['user']['permissions'])))
+      $delegate = TRUE;
+
+    return $delegate;
+
+  }
+
+  /**
    * Returns the id of the logged in user from $_SESSION['user']
    */
   function getLoggedInUserID(){
@@ -43,9 +59,14 @@
     while($row = $result->fetch_assoc()){
 
       $delegate = array();
-      $delegate['id'] = $row['id'];
-      $delegate['name'] = $row['name'];
-      $delegates[] = $delegate;
+
+      if($row['id'] != getLoggedInUserID()){
+
+        $delegate['id'] = $row['id'];
+        $delegate['name'] = $row['name'];
+        $delegates[] = $delegate;
+
+      }
 
     }
 
