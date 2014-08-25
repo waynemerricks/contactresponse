@@ -154,6 +154,79 @@ class Contact{
 
   }
 
+  /**
+   * @return Returns true if the contact has a postal address
+   */
+  public function hasPostalAddress(){
+
+    $postal = false;
+
+    if(isset($this->customFields['address']))
+      $postal = true;
+
+    return $postal;
+
+  }
+
+  /**
+   * @return Returns true if the contact has a phone number for SMS
+   */
+  public function hasPhoneNumber(){
+
+    $number = false;
+
+    if(isset($this->phone) && strlen(trim($this->phone)) > 6)
+      $number = true;
+
+    return $number;
+
+  }
+
+  /**
+   * @return Returns true if the contact has an email address
+   */
+  public function hasEmail(){
+
+    $valid = false;
+
+    if(isset($this->email) && filter_var($this->email, FILTER_VALIDATE_EMAIL))
+      $valid = true;
+
+    return $valid;
+
+  }
+
+  /** Sets this contacts assigned user
+   * @return true if successful, dies if not
+   */
+  public function setAssignedUser($userID){
+
+    $sql = 'UPDATE `contacts` SET `assigned_user_id` = ?, `updated` = NOW() WHERE `id` = ?';//Get the list of custom fields
+
+    $stmt = $this->mysqli->prepare($sql) or die('MySQL Set Assigned User prepare error');
+    $stmt->bind_param('ii', $userID, $this->id) or die('MySQL Set Assigned User bind error');
+    $stmt->execute() or die('MySQL Set Assigned User Execute error');
+
+    $stmt->close();
+
+    return true;
+
+  }
+
+  /** Tests to see if this contact has an assigned user
+   * @return true if assigned, false if not
+   */
+  public function hasAssignedHelper(){
+
+    $helper = false;
+
+    if($this->assignedUser != NULL && strlen($this->assignedUser) > 0)
+      $helper = true;
+
+    return $helper;
+
+  }
+
 }
 
 ?>
