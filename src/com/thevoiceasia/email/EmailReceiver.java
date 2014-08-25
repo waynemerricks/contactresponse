@@ -208,7 +208,9 @@ public class EmailReceiver extends Thread{
 							
 						}catch(MessagingException e){
 							
-							LOGGER.warning("Importer: MESSAGING EXCEPTION: There was a problem getting this messages recipients, skipping message"); //$NON-NLS-1$
+							LOGGER.warning("Importer: MESSAGING EXCEPTION: " + //$NON-NLS-1$
+									"There was a problem getting this " + //$NON-NLS-1$
+									"messages recipients, skipping message"); //$NON-NLS-1$
 							skip = true;
 							
 						}
