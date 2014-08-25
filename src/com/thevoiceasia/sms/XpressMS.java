@@ -18,22 +18,22 @@ public class XpressMS {
 		 */
 		boolean gotMessageLine = false;
 		
-		String[] lines = parseMe.split("\n");
+		String[] lines = parseMe.split("\n"); //$NON-NLS-1$
 		int i = 0;
 		boolean done = false;
 		String message = null;
 		
 		while(i < lines.length && !done){
 			
-			if(!gotMessageLine && lines[i].startsWith("Message:")){
+			if(!gotMessageLine && lines[i].startsWith("Message:")){ //$NON-NLS-1$
 				
 				gotMessageLine = true;
-				message = lines[i].substring("Message:".length()) + "\n";
+				message = lines[i].substring("Message:".length()) + "\n";  //$NON-NLS-1$//$NON-NLS-2$
 				
-			}else if(gotMessageLine && lines[i].startsWith("Message delivery powered by www.xpressms.com"))
+			}else if(gotMessageLine && lines[i].startsWith("Message delivery powered by www.xpressms.com")) //$NON-NLS-1$
 				done = true;
 			else if(gotMessageLine)
-				message += lines[i] + "\n";
+				message += lines[i] + "\n"; //$NON-NLS-1$
 			
 			i++;
 				
@@ -50,12 +50,12 @@ public class XpressMS {
 		
 		String content = toMessage(args[0]);
 		
-		if(!args[1].equals("Y"))
+		if(!args[1].equals("Y")) //$NON-NLS-1$
 			System.out.println(content);
 		
-		if(args[1].equals("Y"))
+		if(args[1].equals("Y")) //$NON-NLS-1$
 			if(content.length() > 50)
-				System.out.println(content.substring(0, 47) + "...");
+				System.out.println(content.substring(0, 47) + "..."); //$NON-NLS-1$
 			else
 				System.out.println(content);
 
