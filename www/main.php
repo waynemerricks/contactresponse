@@ -83,7 +83,7 @@
         if(confirm('Auto Reply to this contact?')){
 
           //JQuery POST to autoreply.php
-          $.post( "autoreply.php", { template: replyType, contact: contact, newest: maxid })
+          $.post( "dynamic/autoreply.php", { template: replyType, contact: contact, newest: maxid })
             .done(function( data ) {
               if(data == 'SUCCESS')//It worked so remove this entry from inbox
                 $("#contact-" + contact).remove();
@@ -102,7 +102,7 @@
         if(confirm('Mark as Junk Mail? This will block this sender!')){
 
           //JQuery POST to junkmail.php
-          $.post( "junkmail.php", { contact: contact})
+          $.post( "dynamic/junkmail.php", { contact: contact})
             .done(function( data ) {
               if(data == 'SUCCESS')//It worked so remove this entry from the inbox
                 $("#contact-" + contact).remove();

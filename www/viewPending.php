@@ -49,7 +49,7 @@
         if(!disableReplies){
 
           //JQuery POST to autoreply.php
-          $.post( "autoreply.php", { template: template, contact: contact, newest: newestID })
+          $.post( "dynamic/autoreply.php", { template: template, contact: contact, newest: newestID })
             .done(function( data ) {
               if(data == 'SUCCESS')//It worked so redirect to inbox
                 window.location='main.php';
@@ -73,7 +73,7 @@
         if(!disableReplies){
 
           //JQuery POST to manualreply.php
-          $.post( "manualreply.php", { type: replyType, contact: contact, newest: newestID })
+          $.post( "dynamic/manualreply.php", { type: replyType, contact: contact, newest: newestID })
             .done(function( data ) {
               if(data == 'SUCCESS'){//It worked so redirect to inbox
                 disableReplies = true;
@@ -95,7 +95,7 @@
        function delegate(contact, delegate){
 
          //JQuery POST to delegate.php
-         $.post( "delegate.php", { contact: contact, user: delegate })
+         $.post( "dynamic/delegate.php", { contact: contact, user: delegate })
             .done(function( data ) {
               if(data == 'SUCCESS')//It worked so redirect to inbox
                 window.location='main.php';
