@@ -96,6 +96,8 @@ CREATE TABLE `contacts` (
   `assigned_user_id` int(11) DEFAULT NULL,
   `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+  `status` char(1) NOT NULL DEFAULT 'N',
+  `auto_reply` char(1) NOT NULL DEFAULT 'Y',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=149 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -129,10 +131,11 @@ CREATE TABLE `messages` (
   `direction` char(1) NOT NULL DEFAULT 'U',
   `created_by` int(11) NOT NULL DEFAULT '0',
   `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated` timestamp NULL DEFAULT NULL,
   `status` char(1) NOT NULL DEFAULT 'D',
   `preview` varchar(50) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1751 DEFAULT CHARSET=utf8 COMMENT='utf8_general_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=1778 DEFAULT CHARSET=utf8 COMMENT='utf8_general_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -148,7 +151,7 @@ CREATE TABLE `permissions` (
   `friendly_name` varchar(25) DEFAULT NULL,
   `description` text NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -163,7 +166,7 @@ CREATE TABLE `role_members` (
   `role_id` int(11) NOT NULL DEFAULT '1',
   `user_id` int(11) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -228,7 +231,7 @@ CREATE TABLE `users` (
   `login_name` varchar(50) NOT NULL DEFAULT '',
   `password` varchar(250) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -240,4 +243,4 @@ CREATE TABLE `users` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2014-08-25 22:00:29
+-- Dump completed on 2014-08-26 22:52:41
