@@ -8,7 +8,9 @@
   include('includes/loggedIn.php'); //Include logged in check
   include('includes/inbox.php'); //Functions for getting the inbox of this user
   include('includes/user.php'); //Functions relating to logged in user
+  include('includes/autoreplies.php'); //Functions relating to auto replies
 
+  $autoReplies = getAutoReplyTypes($mysqli);
   $contactsPending = getInbox(getUserId(), isDefaultHelper(), $mysqli);
 
 ?>
@@ -30,6 +32,86 @@
         });
 
       }
+
+      /** JS Flags this contact for a quick generic auto reply
+       * @param contact contact id to reply to
+       * @param maxid id of latest message this applies to
+       */
+      function replyGeneric(contact, maxid){
+
+        autoReply('<?php echo $autoReplies['G']; ?>', contact, maxid);
+
+      }
+
+      /** JS Flags this contact for a quick prayer auto reply
+       * @param contact contact id to reply to
+       * @param maxid id of latest message this applies to
+       */
+      function replyPrayer(contact, maxid){
+
+        autoReply('<?php echo $autoReplies['P']; ?>', contact, maxid);
+
+      }
+
+      /** JS Flags this contact for a quick song auto reply
+       * @param contact contact id to reply to
+       * @param maxid id of latest message this applies to
+       */
+      function replySong(contact, maxid){
+
+        autoReply('<?php echo $autoReplies['S']; ?>', contact, maxid);
+
+      }
+
+      /** JS Flags this contact for a quick song auto reply
+       * @param contact contact id to reply to
+       * @param maxid id of latest message this applies to
+       */
+      function replyCompetition(contact, maxid){
+
+        autoReply('<?php echo $autoReplies['C']; ?>', contact, maxid);
+
+      }
+
+      /** JS Flags this contact for a quick auto reply
+       * @param contact contact id to reply to
+       * @param type type of reply to send
+       * @param maxid id of latest message this applies to
+       */
+      function autoReply(contact, replyType, maxid){
+
+        if(confirm('Auto Reply to this contact?')){
+
+          //JQuery POST to autoreply.php
+          $.post( "autoreply.php", { template: replyType, contact: contact, newest: maxid })
+            .done(function( data ) {
+              if(data == 'SUCCESS')//It worked so remove this entry from inbox
+                $("#contact-" + contact).remove();
+              else alert(data);
+            });
+
+        }
+
+      }
+
+      /** JS Sets this contact as sending junk, no more messages will come
+       * from this contact
+       */
+      function junkMail(contact){
+
+        if(confirm('Mark as Junk Mail? This will block this sender!')){
+
+          //JQuery POST to junkmail.php
+          $.post( "junkmail.php", { contact: contact})
+            .done(function( data ) {
+              if(data == 'SUCCESS')//It worked so remove this entry from the inbox
+                $("#contact-" + contact).remove();
+              else alert(data);
+            });
+
+        }
+
+      }
     </script>
   </head>
   <body>
@@ -47,6 +129,11 @@
           } else {
 
             for($i = 0; $i < sizeof($contactsPending); $i++){ 
+
+              $previewIsFullMessage = false;
+
+              if(substr($contactsPending[$i]['preview'], -3) != '...')
+                $previewIsFullMessage = true;
 
               $src = 'images/generic.png';
 
@@ -89,7 +176,7 @@
               if($contactsPending[$i]['waiting'] > 99)
                 $contactsPending[$i]['waiting'] = '++';
         ?>
-          <tr>
+          <tr id="contact-<?php echo $contactsPending[$i]['id']; ?>">
             <td class="icon">
               <div id="container">
                 <div id="icon">
@@ -116,20 +203,29 @@
               <a href="viewPending.php?id=<?php echo $contactsPending[$i]['id']; ?>">
                 <?php echo $contactsPending[$i]['preview']; ?>
               </a>
-              <div class="quickTools">
-                <a href="javascript:void(0)">
-                  <img alt="Generic" src="images/toolgeneric.png" />
-                </a>
-                <a href="javascript:void(0)">
-                  <img alt="Prayer" src="images/prayer.png" />
-                </a><img alt="Song" src="images/song.png" />
-                <a href="javascript:void(0)">
-                  <img alt="Competition" src="images/competition.png" />
-                </a>
-                <a href="javascript:void(0)">
-                  <img alt="Mark as Junk" src="images/junk.png" />
-                </a>
-              </div>
+              <?php if(canReplyFromInbox()){ ?>
+                <div class="quickTools">
+                  <?php if($contactsPending[$i]['waiting'] == 1 && $previewIsFullMessage){ //Only show quick tools if there is one reply ?>
+                    <a href="javascript:void(0)">
+                      <img alt="Generic" src="images/toolgeneric.png" onclick="replyGeneric('<?php echo $contactsPending[$i]['id']; ?>', '<?php echo $contactsPending[$i]['maxid']; ?>')" />
+                    </a>
+                    <a href="javascript:void(0)" onclick="replyPrayer('<?php echo $contactsPending[$i]['id']; ?>', '<?php echo $contactsPending[$i]['maxid']; ?>')">
+                      <img alt="Prayer" src="images/prayer.png" />
+                    </a>
+                    <a href="javascript:void(0)" onclick="replySong('<?php echo $contactsPending[$i]['id']; ?>', '<?php echo $contactsPending[$i]['maxid']; ?>')">
+                      <img alt="Song" src="images/song.png" />
+                    </a>
+                    <a href="javascript:void(0)" onclick="replyCompetition('<?php echo $contactsPending[$i]['id']; ?>', '<?php echo $contactsPending[$i]['maxid']; ?>')">
+                      <img alt="Competition" src="images/competition.png" />
+                    </a>
+                  <?php } ?>
+                  <?php if(canJunk()){ ?>
+                    <a href="javascript:void(0)" onclick="junkMail('<?php echo $contactsPending[$i]['id']; ?>')">
+                      <img alt="Mark as Junk" src="images/junk.png" />
+                    </a>
+                  <?php } ?>
+                </div>
+              <?php } ?>
             </td>
           </tr>
         <?php
