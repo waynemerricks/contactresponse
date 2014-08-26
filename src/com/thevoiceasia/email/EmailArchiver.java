@@ -508,6 +508,35 @@ public class EmailArchiver extends Thread implements EmailReader {
 		
 	}
 	
+	/**
+	 * Helper method that will strip out more than 1 line with empty text and
+	 * new line chars
+	 * @param parseMe
+	 * @return String without excessive blank new lines
+	 */
+	private String stripExcessiveNewLines(String parseMe){
+		
+		String[] lines = parseMe.split("\n"); //$NON-NLS-1$
+		parseMe = ""; //$NON-NLS-1$
+		
+		int blankCount = 0;
+		
+		for(String temp : lines){
+			
+			if(temp.trim().length() == 0)
+				blankCount++;
+			else
+				blankCount = 0;
+			
+			if(blankCount < 3)
+				parseMe += temp + "\n"; //$NON-NLS-1$
+			
+		}
+		
+		return parseMe;
+		
+	}
+	
 	@Override
 	public boolean receiveEmail(Date receivedDate, String from, String to, 
 			String name, String body, String subject) {
@@ -533,8 +562,14 @@ public class EmailArchiver extends Thread implements EmailReader {
 		
 		//We can still have html here if the email registered plain text but sent html
 		//So strip it
-		body = HTML2Text.convert(body);
-		subject = HTML2Text.convert(subject);
+		if(HTML2Text.hasHTML(body))
+			body = HTML2Text.convert(body);
+		
+		if(HTML2Text.hasHTML(subject))
+			subject = HTML2Text.convert(subject);
+		
+		body = stripExcessiveNewLines(body);
+		subject = stripExcessiveNewLines(subject);
 		
 		int existingContactId = getContactId(from, name, sms);
 		String preview = body.replaceAll("\n", "  ").replaceAll("\r", ""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
