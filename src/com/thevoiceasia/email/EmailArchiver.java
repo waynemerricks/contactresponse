@@ -557,7 +557,7 @@ public class EmailArchiver extends Thread implements EmailReader {
 			type = "S"; //$NON-NLS-1$
 			body = parseSMS(body);//Split XpressMS info out of the body
 			
-		}else if(body.length() > 0)
+		}else
 			body = prefixSubject(body, subject);
 		
 		//We can still have html here if the email registered plain text but sent html
