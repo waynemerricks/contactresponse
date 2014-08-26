@@ -13,8 +13,8 @@
     if($getUnassignedRecords === TRUE)
       $sql .= ' OR `messages`.`assigned_user` = 0';
 
-    $sql .= ') AND `messages`.`status` = \'D\' GROUP BY `messages`.`owner` ORDER BY
-            `messages`.`created` ASC';
+    $sql .= ') AND `messages`.`status` = \'D\' AND `messages`.`type` != \'A\'
+            GROUP BY `messages`.`owner` ORDER BY `messages`.`created` ASC';
 
     $result = $mysqli->query($sql);
 
