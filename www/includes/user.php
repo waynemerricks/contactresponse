@@ -33,6 +33,36 @@
   }
 
   /**
+   * Returns true if this user can set contacts as sending junk mail
+   */
+  function canJunk(){
+
+    $junk = FALSE;
+
+    if(isset($_SESSION['user']['permissions']) && in_array('CAN_JUNK_CONTACT',
+          $_SESSION['user']['permissions']))
+      $junk = TRUE;
+
+    return $junk;
+
+  }
+
+  /**
+   * Returns true if this user can use quick replies from the inbox view
+   */
+  function canReplyFromInbox(){
+
+    $reply = FALSE;
+
+    if(isset($_SESSION['user']['permissions']) && in_array('CAN_REPLY_INBOX',
+          $_SESSION['user']['permissions']))
+      $reply = TRUE;
+
+    return $reply;
+
+  }
+
+  /**
    * Returns the id of the logged in user from $_SESSION['user']
    */
   function getLoggedInUserID(){
