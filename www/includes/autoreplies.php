@@ -23,4 +23,21 @@
 
   }
 
+  function getAutoReplyTypes($mysqli){
+
+    $types = array();
+
+    $sql = 'SELECT `id`, `type` FROM `templates` ORDER BY `label` ASC';
+
+    $result = $mysqli->query($sql);
+
+    while($row = $result->fetch_assoc())
+      $types[$row['type']] = $row['id'];
+
+    $result->close();
+
+    return $types;
+
+  }
+
 ?>
