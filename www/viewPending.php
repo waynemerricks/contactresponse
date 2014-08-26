@@ -179,6 +179,8 @@
     <div id="footer">
       <ul id="footer_menu"><!-- Menu Root -->
         <li class="buttons homeButton"><a href="main.php"></a></li>
+        <li class="buttons contactButton"><a href="contacts.php"></a></li>
+        <li><a href="#"><?php echo getUsersName(); ?></a>
         <li><a href="#">Manual Reply</a>
           <ul class="dropup">
             <?php if($contact->hasEmail()){ ?>
