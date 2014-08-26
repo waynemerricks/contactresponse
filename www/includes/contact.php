@@ -201,11 +201,19 @@ class Contact{
    */
   public function setAssignedUser($userID){
 
-    $sql = 'UPDATE `contacts` SET `assigned_user_id` = ?, `updated` = NOW() WHERE `id` = ?';//Get the list of custom fields
+    //Update the user
+    $sql = 'UPDATE `contacts` SET `assigned_user_id` = ?, `updated` = NOW() WHERE `id` = ?';
 
     $stmt = $this->mysqli->prepare($sql) or die('MySQL Set Assigned User prepare error');
     $stmt->bind_param('ii', $userID, $this->id) or die('MySQL Set Assigned User bind error');
     $stmt->execute() or die('MySQL Set Assigned User Execute error');
+
+    //Add an admin event in the messages table
+    $sql = 'INSERT INTO `messages` (`owner`, `type`, `created_by`, `updated`) VALUES (?, ?, ?, NOW())';
+
+    $stmt = $this->mysqli->prepare($sql) or die('MySQL Insert Admin Event prepare error');
+    $stmt->bind_param('isi', $this->id, $admin = 'A', getLoggedInUserID()) or die('MySQL Insert Admin Event bind error');
+    $stmt->execute() or die('MySQL Insert Admin Event Execute error');
 
     $stmt->close();
 
