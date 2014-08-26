@@ -16,7 +16,7 @@
     if($contact->hasAssignedHelper() === FALSE)
       $contact->setAssignedUser(getLoggedInUserID());
 
-    $sql = 'UPDATE `messages` SET `status` = \'T\' WHERE `owner` = ? AND `status` = \'D\' AND `id` <= ?';
+    $sql = 'UPDATE `messages` SET `status` = \'T\', `updated` = NOW() WHERE `owner` = ? AND `status` = \'D\' AND `id` <= ?';
 
     $stmt = $mysqli->prepare($sql) or die('MySQL Temp Wait prepare error');
     $stmt->bind_param('ii', $_POST['contact'], $_POST['newest']) or die('MySQL Temp Wait bind error');
