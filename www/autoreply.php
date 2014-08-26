@@ -16,7 +16,7 @@
     if($contact->hasAssignedHelper() === FALSE)
       $contact->setAssignedUser(getLoggedInUserID());
 
-    $sql = 'UPDATE `messages` SET `status` = \'A\' WHERE `owner` = ? AND `status` = \'D\' AND `id` < ?';
+    $sql = 'UPDATE `messages` SET `status` = \'A\', `updated` = NOW() WHERE `owner` = ? AND `status` = \'D\' AND `id` < ?';
 
     $stmt = $mysqli->prepare($sql) or die('MySQL Archive prepare error');
     $stmt->bind_param('ii', $_POST['contact'], $_POST['newest']) or die('MySQL Archive bind error');
@@ -24,7 +24,7 @@
 
     $stmt->close();
 
-    $sql = 'UPDATE `messages` SET `status` = \'R\' WHERE `id` = ?';
+    $sql = 'UPDATE `messages` SET `status` = \'R\', `updated` = NOW() WHERE `id` = ?';
 
     $stmt = $mysqli->prepare($sql) or die('MySQL Reply prepare error');
     $stmt->bind_param('i', $_POST['newest']) or die('MySQL Reply bind error');;
