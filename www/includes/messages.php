@@ -18,7 +18,8 @@
     if($getUnassignedRecords === TRUE)
       $sql .= ' OR `messages`.`assigned_user` = 0';
 
-    $sql .= ') AND `messages`.`status` = \'D\' AND `owner` = ' . $contact;
+    $sql .= ') AND `messages`.`status` = \'D\' AND `messages`.`type` != \'A\'
+            AND `owner` = ' . $contact;
 
     $result = $mysqli->query($sql);
 
