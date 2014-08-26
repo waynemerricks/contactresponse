@@ -92,6 +92,18 @@
 
 }
 
+#footer_menu li.adminButton {
+
+  background: url('../images/admin.png') top left no-repeat;
+
+}
+
+#footer_menu li.adminButton:hover {
+
+  background: url('../images/admin2.png') top left no-repeat;
+
+}
+
 #footer_menu li.contactButton {
 
   background: url('../images/contact.png') top left no-repeat;
