@@ -1,6 +1,64 @@
 <?php
 
   /**
+   * Helper method to test for the given permission
+   */
+  function hasPermission($permission){
+
+    $hasIt = FALSE;
+
+    if(isset($_SESSION['user']['permissions']) && in_array($permission,
+          $_SESSION['user']['permissions']))
+      $hasIt = TRUE;
+
+    return $hasIt;
+
+  }
+
+  /** Returns users name (not the login name) */
+  function getUsersName(){
+
+    return $_SESSION['user']['name'];
+
+  }
+
+  /** True if user can create other users */
+  function canCreateUsers(){
+
+    $create = FALSE;
+
+    if(hasPermission('CREATE_USERS'))
+      $create = TRUE;
+
+    return $create;
+
+  }
+
+  /** True if user can admin permissions */
+  function canEditPermissions(){
+
+    $perms = FALSE;
+
+    if(hasPermission('EDIT_PERMISSIONS'))
+      $perms = TRUE;
+
+    return $perms;
+
+  }
+
+  /** True if user can admin roles */
+  function canEditRoles(){
+
+    $roles = FALSE;
+
+    if(hasPermission('EDIT_ROLES'))
+      $roles = TRUE;
+
+    return $roles;
+
+  }
+
+  /**
    * Returns true if this user is the default helper (e.g. where contacts
    * go if not assigned elsewhere)
    */
@@ -8,8 +66,7 @@
 
     $default = FALSE;
 
-    if(isset($_SESSION['user']['permissions']) && in_array('DEFAULT_HELPER',
-          $_SESSION['user']['permissions']))
+    if(hasPermission('DEFAULT_HELPER'))
       $default = TRUE;
 
     return $default;
@@ -23,9 +80,8 @@
 
     $delegate = FALSE;
 
-    if(isset($_SESSION['user']['permissions']) && (in_array('CAN_DELEGATE_UNDERLING',
-          $_SESSION['user']['permissions']) || in_array('CAN_DELEGATE_ALL',
-          $_SESSION['user']['permissions'])))
+    if(hasPermission('CAN_DELEGATE_UNDERLING') ||
+        hasPermission('CAN_DELEGATE_ALL'))
       $delegate = TRUE;
 
     return $delegate;
@@ -39,11 +95,24 @@
 
     $junk = FALSE;
 
-    if(isset($_SESSION['user']['permissions']) && in_array('CAN_JUNK_CONTACT',
-          $_SESSION['user']['permissions']))
+    if(hasPermission('CAN_JUNK_CONTACT'))
       $junk = TRUE;
 
     return $junk;
+
+  }
+
+  /**
+   * Returns true if this user can view admin menu
+   */
+  function isAdmin(){
+
+    $admin = FALSE;
+
+    if(hasPermission('USER_ADMIN') || hasPermission('SYS_ADMIN'))
+      $admin = TRUE;
+
+    return $admin;
 
   }
 
@@ -54,8 +123,7 @@
 
     $reply = FALSE;
 
-    if(isset($_SESSION['user']['permissions']) && in_array('CAN_REPLY_INBOX',
-          $_SESSION['user']['permissions']))
+    if(hasPermission('CAN_REPLY_INBOX'))
       $reply = TRUE;
 
     return $reply;
