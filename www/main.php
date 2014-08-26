@@ -19,6 +19,7 @@
     <meta charset="utf8">
     <title>CRS | Inbox</title>
     <link rel="stylesheet" type="text/css" href="css/crs.css">
+    <link rel="stylesheet" type="text/css" href="css/menu.css">
     <script type="text/javascript" src="includes/jquery-2.1.1.min.js"></script>
     <script type="text/javascript">
       //JQuery updateInbox messages
@@ -233,6 +234,21 @@
           }
         ?>
       </table>
+    </div>
+    <div id="spacer"></div>
+    <div id="footer">
+      <ul id="footer_menu"><!-- Menu Root -->
+        <li class="buttons homeButton"><a href="main.php"></a></li>
+        <li class="buttons contactButton"><a href="contacts.php"></a></li>
+        <li><a href="#">Test Menu</a>
+          <ul class="dropup">
+            <li><a href="#" onclick="">Test Item 1</a></li>
+            <li><a href="#" onclick="">Test Item 2</a></li>
+            <li><a href="#" onclick="">Test Item 3</a></li>
+          </ul>
+        </li>
+        <li class="right"><a href="logout.php">Logout</a></li>
+      </ul>
     </div>
   </body>
 </html>

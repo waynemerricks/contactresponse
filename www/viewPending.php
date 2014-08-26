@@ -178,7 +178,7 @@
     <div id="spacer"></div>
     <div id="footer">
       <ul id="footer_menu"><!-- Menu Root -->
-        <li class="homeButton"><a href="main.php"></a></li>
+        <li class="buttons homeButton"><a href="main.php"></a></li>
         <li><a href="#">Manual Reply</a>
           <ul class="dropup">
             <?php if($contact->hasEmail()){ ?>

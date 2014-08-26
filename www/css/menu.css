@@ -12,6 +12,7 @@
   text-shadow: 1px 1px 1px black;
   border-top: 1px solid rgba(0,0,0,0.3);
   background: rgb(0,0,0);
+  z-index:10;
 
 }
 
@@ -68,25 +69,42 @@
 
 }
 
-#footer_menu .homeButton {
+#footer_menu li.buttons{
 
   padding: 5px 2px 0px 14px;
   border-right: 1px solid rgba(255,255,255,0.4);
-  background: url('../images/home.png') top left no-repeat;
   width: 32px;
   height: 32px;
   margin-left: 15px;
   margin-top: 5px;
+  background: none;
+
+}
+#footer_menu li.homeButton {
+
+  background: url('../images/home.png') top left no-repeat;
 
 }
 
-#footer_menu .homeButton:hover {
+#footer_menu li.homeButton:hover {
 
   background: url('../images/home2.png') top left no-repeat;
 
 }
 
-#footer_menu .homeButton a{
+#footer_menu li.contactButton {
+
+  background: url('../images/contact.png') top left no-repeat;
+
+}
+
+#footer_menu li.contactButton:hover {
+
+  background: url('../images/contact2.png') top left no-repeat;
+
+}
+
+#footer_menu li.buttons a{
 
   width: 100%;
   height: 100%;
@@ -105,6 +123,7 @@
 #footer_menu li:hover ul.dropup {
 
   display: block;
+  z-index: 10;
   position: absolute;
   margin: 0 0 0 -15px;
   bottom: 40px;
