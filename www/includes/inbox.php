@@ -5,7 +5,7 @@
     $messages = array();
     $sql = 'SELECT `messages`.`created`, `messages`.`type`, `contacts`.`name`,
               `contacts`.`email`, `contacts`.`phone`, `messages`.`preview`, 
-              `contacts`.`id`, COUNT(*) AS `waiting`
+              `contacts`.`id`, COUNT(*) AS `waiting`, MAX(`messages`.`id`) AS `msg_id`
             FROM `messages` 
             INNER JOIN `contacts` ON `messages`.`owner` = `contacts`.`id`
             WHERE (`messages`.`assigned_user` = ' . $userid;
@@ -47,6 +47,7 @@
       $record['preview'] = $row['preview'];
       $record['id'] = $row['id'];
       $record['waiting'] = $row['waiting'];
+      $record['maxid'] = $row['msg_id'];
 
       $messages[] = $record;
 
