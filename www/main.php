@@ -240,13 +240,22 @@
       <ul id="footer_menu"><!-- Menu Root -->
         <li class="buttons homeButton"><a href="main.php"></a></li>
         <li class="buttons contactButton"><a href="contacts.php"></a></li>
-        <li><a href="#">Test Menu</a>
-          <ul class="dropup">
-            <li><a href="#" onclick="">Test Item 1</a></li>
-            <li><a href="#" onclick="">Test Item 2</a></li>
-            <li><a href="#" onclick="">Test Item 3</a></li>
-          </ul>
-        </li>
+        <li><a href="#"><?php echo getUsersName(); ?></a>
+        <?php if(isAdmin()){ ?>
+          <li><a href="#">Admin</a>
+            <ul class="dropup">
+              <?php if(canCreateUsers()){ ?>
+                <li><a href="admin/createUser.php">Create User</a></li>
+              <?php } ?>
+              <?php if(canEditPermissions()){ ?>
+                <li><a href="#">Permissions</a></li>
+              <?php } ?>
+              <?php if(canEditRoles()){ ?>
+                <li><a href="#">Roles</a></li>
+              <?php } ?>
+            </ul>
+          </li>
+        <?php } ?>
         <li class="right"><a href="logout.php">Logout</a></li>
       </ul>
     </div>
