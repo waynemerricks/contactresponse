@@ -39,7 +39,7 @@
        */
       function replyGeneric(contact, maxid){
 
-        autoReply('<?php echo $autoReplies['G']; ?>', contact, maxid);
+        autoReply(contact, '<?php echo $autoReplies['G']; ?>', maxid);
 
       }
 
@@ -49,7 +49,7 @@
        */
       function replyPrayer(contact, maxid){
 
-        autoReply('<?php echo $autoReplies['P']; ?>', contact, maxid);
+        autoReply(contact, '<?php echo $autoReplies['P']; ?>', maxid);
 
       }
 
@@ -59,7 +59,7 @@
        */
       function replySong(contact, maxid){
 
-        autoReply('<?php echo $autoReplies['S']; ?>', contact, maxid);
+        autoReply(contact, '<?php echo $autoReplies['S']; ?>', maxid);
 
       }
 
@@ -69,7 +69,7 @@
        */
       function replyCompetition(contact, maxid){
 
-        autoReply('<?php echo $autoReplies['C']; ?>', contact, maxid);
+        autoReply(contact, '<?php echo $autoReplies['C']; ?>', maxid);
 
       }
 
