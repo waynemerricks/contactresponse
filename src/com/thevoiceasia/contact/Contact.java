@@ -20,10 +20,21 @@ public class Contact {
 	private int id = -1, languageID = -1, assignedUser = -1;
 	private long created = -1, updated = -1;
 	private boolean sms = false;
+	private HashMap<String, String> custom = new HashMap<String, String>();
+	
 	private DatabaseHelper database = null;
 
 	private static final Logger LOGGER = Logger.getLogger("com.thevoiceasia.contact.Contact"); //$NON-NLS-1$
 	private static final Level LEVEL = Level.INFO;//Logging level of this class
+	
+	/**
+	 * Creates a contact object with default values (no DB lookups)
+	 */
+	public Contact(){
+	
+		//All set at instantiation to null or -1
+		
+	}
 	
 	/**
 	 * Creates a Contact and populates with info from the database 
@@ -171,6 +182,7 @@ public class Contact {
 					autoReply = contact.getString("auto_reply"); //$NON-NLS-1$
 					
 					//Flag existing success
+					populateCustomFields();
 					existing = true;
 					
 				}
@@ -199,6 +211,7 @@ public class Contact {
 				try{
 					select.close();
 				}catch(Exception e){}
+				Contact c = new Contact();
 				
 				select = null;
 				
@@ -409,8 +422,9 @@ public class Contact {
 	public void updateWithWebForm(String form){
 	
 		//TODO update based on the form
-		String[] lines = body.split("\n"); //$NON-NLS-1$
+		String[] lines = form.split("\n"); //$NON-NLS-1$
 		Contact c = new Contact();
+		
 		boolean addedInfo = false;
 		
 		for(String temp : lines){
@@ -606,12 +620,13 @@ public class Contact {
 		
 	}
 	
-	private HashMap<String, String> getCustomFields(int id, Connection mysql) {
+	private void populateCustomFields(){
 		//TODO close resultset on this and one of the other contact things
-		HashMap<String, String> custom = new HashMap<String, String>();
 		
 		String[] tables = {"contact_values_large", "contact_values_medium",  //$NON-NLS-1$ //$NON-NLS-2$
 				"contact_values_small"}; //$NON-NLS-1$
+		
+		LOGGER.info("Getting custom for Contact: " + getIdentifierName()); //$NON-NLS-1$
 		
 		for (int i = 0; i < tables.length; i++){
 			
@@ -620,39 +635,30 @@ public class Contact {
 				"` ON `" + tables[i] + "`.`field_id` = `contact_fields`.`id` " + //$NON-NLS-1$ //$NON-NLS-2$
 				"WHERE `" + tables[i] + "`.`owner_id` = ?"; //$NON-NLS-1$ //$NON-NLS-2$
 			
-			LOGGER.info("Getting custom for Contact: " + id); //$NON-NLS-1$
 			
 			PreparedStatement selectContact = null;
 			ResultSet customResults = null;
-			Contact c = null;
 			
 			try{
 				
 				//Bind all variables to statement
-				selectContact = mysql.prepareStatement(SQL);
+				selectContact = database.getConnection().prepareStatement(SQL);
 				selectContact.setInt(1, id);
 				
 				//Execute it
 				selectContact.execute();
 				customResults = selectContact.getResultSet();
 				
-				while(customResults.next()){
+				while(customResults.next())
+					custom.put(customResults.getString("label"),  //$NON-NLS-1$
+							customResults.getString("value")); //$NON-NLS-1$
 					
-					custom.put(results.getString(""), value)
-					c.name = checkNull(customResults.getString("name")); //$NON-NLS-1$
-					c.gender = checkNull(customResults.getString("gender")); //$NON-NLS-1$
-					c.phoneNumber = checkNull(customResults.getString("phone")); //$NON-NLS-1$
-					c.email = checkNull(customResults.getString("email")); //$NON-NLS-1$
-					
-				}
-				
-				if(c != null)
-					getCustomFields(id, mysql);
-				
 			}catch(SQLException e){
 				
 				e.printStackTrace();
-				LOGGER.severe("SQL Error while getting contact " + id); //$NON-NLS-1$
+				LOGGER.severe("SQL Error while getting custom fields for " + //$NON-NLS-1$
+						"contact " + getIdentifierName() + " on table " + //$NON-NLS-1$ //$NON-NLS-2$
+						tables[i] + id); 
 				
 			}finally{
 				
@@ -666,8 +672,6 @@ public class Contact {
 			}
 			
 		}
-		
-		return custom;
 		
 	}
 	
