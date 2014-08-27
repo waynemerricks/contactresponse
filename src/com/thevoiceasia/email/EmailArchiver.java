@@ -12,10 +12,12 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.thevoiceasia.contact.Contact;
 import com.thevoiceasia.database.DatabaseHelper;
 import com.thevoiceasia.html.HTML2Text;
 import com.thevoiceasia.sms.XpressMS;
@@ -217,7 +219,8 @@ public class EmailArchiver extends Thread implements EmailReader {
 	 * @param smsMessage if this is an sms message it searches by phone and not email
 	 * @return id of existing or new contact
 	 */
-	private int getContactId(String fromAddress, String name, boolean smsMessage) {
+	private int getContactId(String fromAddress, String name, 
+			boolean smsMessage, Contact contact) {
 		
 		int id = -1;
 		
@@ -249,8 +252,8 @@ public class EmailArchiver extends Thread implements EmailReader {
 					
 					id = contactIDs.getInt(1);
 					
-					if(name != null && contactIDs.getString(2).equals("Unknown")) //$NON-NLS-1$
-						updateName(id, name);
+					if((name != null || contact.name != null) && contactIDs.getString(2).equals("Unknown")) //$NON-NLS-1$
+						updateName(id, name, contact);
 					
 				}
 				
@@ -260,7 +263,9 @@ public class EmailArchiver extends Thread implements EmailReader {
 					if(smsMessage)
 						fromAddress = fromAddress.substring(1);//Remove prefix of % for like lookup
 					
-					id = createNewContact(fromAddress, name, smsMessage);
+					id = createNewContact(fromAddress, name, smsMessage, 
+							contact);
+					
 				}
 			}
 			
@@ -296,10 +301,12 @@ public class EmailArchiver extends Thread implements EmailReader {
 	 * @param fromAddress either phone or sms number to create with
 	 * @param name Name of contact to save
 	 * @param smsMessage if sms then we'll insert the fromAddress into the phone field
+	 * @param contact Contact object that may be null or may have useful info
 	 * else we'll just enter it as an email address
 	 * @return id of inserted contact record
 	 */
-	private int createNewContact(String fromAddress, String name, boolean smsMessage) {
+	private int createNewContact(String fromAddress, String name, 
+			boolean smsMessage, Contact contact) {
 		
 		int id = -1;
 		
@@ -337,6 +344,9 @@ public class EmailArchiver extends Thread implements EmailReader {
 				while(contactIDs.next())
 					id = contactIDs.getInt(1);
 				
+				if(contact != null)
+					updateContact(id, contact, mysql);
+				
 			}
 			
 		}catch(SQLException e){
@@ -372,15 +382,19 @@ public class EmailArchiver extends Thread implements EmailReader {
 	 * @param name name to change it to
 	 * @return true if successfully updated
 	 */
-	private boolean updateName(int id, String name) {
+	private boolean updateName(int id, String name, Contact contact) {
 		
 		boolean success = false;
+		
+		if(name == null)//Use contact name as we must have had that as not null
+			name = contact.name;
+		
 		String SQL = "UPDATE `contacts` SET `name` = ?, `updated` = ? WHERE `id` = ?"; //$NON-NLS-1$
 		
 		LOGGER.info("Updating Name for " + id + " to " + name); //$NON-NLS-1$ //$NON-NLS-2$
 		
-		
 		Connection mysql = database.getConnection();
+		
 		PreparedStatement updateContact = null;
 		
 		try{
@@ -397,6 +411,9 @@ public class EmailArchiver extends Thread implements EmailReader {
 			
 			if(rows > 0)
 				success = true;
+			
+			if(contact != null)
+				updateContact(id, contact, mysql);
 				
 		}catch(SQLException e){
 			
@@ -419,6 +436,228 @@ public class EmailArchiver extends Thread implements EmailReader {
 		
 	}
 	
+	/**
+	 * Update a contact with the information given
+	 * @param id id of contact to update
+	 * @param contact information to update it to
+	 * @param mysql Read/Write Connection to DB
+	 */
+	private void updateContact(int id, Contact contact, Connection mysql) {
+		
+		String SQL = "UPDATE `contacts` SET `updated` = ? "; //$NON-NLS-1$
+		
+		Contact existing = getContact(id, mysql);
+		
+		if(contact.phoneNumber != null && existing.phoneNumber == null)
+			SQL += " `phone` = ? "; //$NON-NLS-1$
+		
+		if(contact.gender != null && existing.gender == null)
+			SQL += " `gender` = ? "; //$NON-NLS-1$
+		
+		SQL += "WHERE `id` = ?"; //$NON-NLS-1$
+		
+		if(SQL.length() > 50){//50 is the length without any fields so don't update
+			
+			LOGGER.info("Updating Contact with Form info"); //$NON-NLS-1$
+			
+			PreparedStatement updateContact = null;
+			
+			try{
+				
+				//Bind all variables to statement
+				updateContact = mysql.prepareStatement(SQL);
+				updateContact.setString(1, new SimpleDateFormat(
+						"yyyyMMddHHmmss").format(new Date())); //$NON-NLS-1$
+				
+				int nextIndex = 2;
+				
+				if(contact.phoneNumber != null && existing.phoneNumber == null){
+			
+					updateContact.setString(nextIndex, contact.phoneNumber);
+					nextIndex++;
+					
+				}
+				
+				if(contact.gender != null && existing.gender == null){
+			
+					updateContact.setString(nextIndex, contact.gender);
+					nextIndex++;
+					
+				}
+				
+				updateContact.setInt(nextIndex, id);
+				
+				//Execute it
+				updateContact.executeUpdate();
+				
+				updateCustomFields(contact, existing, mysql);
+				
+			}catch(SQLException e){
+				
+				e.printStackTrace();
+				LOGGER.severe("SQL Error while updating contact " + id); //$NON-NLS-1$
+				
+			}finally{
+				
+				if(updateContact != null){//Close Statement
+		        	try{
+		        		updateContact.close();
+		        		updateContact = null;
+		        	}catch(Exception e){}
+		        }
+		    	
+			}
+		
+		}
+		
+	}
+
+	/**
+	 * Helper method to change db lookup of "null" to java null
+	 * @param check
+	 * @return
+	 */
+	private String checkNull(String check){
+	
+		if(check.equalsIgnoreCase("null") || check.trim().length() == 0) //$NON-NLS-1$
+			check = null;
+		
+		return check;
+		
+	}
+	
+	/**
+	 * Gets a contact given its id
+	 * @param id id to search for
+	 * @param mysql read connection to DB
+	 * @return Contact or null if not found
+	 */
+	private Contact getContact(int id, Connection mysql) {
+		
+		String SQL = "SELECT `name`, `gender`, `phone`, `email` FROM `contacts` " + //$NON-NLS-1$
+				"WHERE id = ?"; //$NON-NLS-1$
+		
+		LOGGER.info("Getting Contact: " + id); //$NON-NLS-1$
+		
+		PreparedStatement selectContact = null;
+		ResultSet contactResults = null;
+		Contact c = null;
+		
+		try{
+			
+			//Bind all variables to statement
+			selectContact = mysql.prepareStatement(SQL);
+			selectContact.setInt(1, id);
+			
+			//Execute it
+			selectContact.execute();
+			contactResults = selectContact.getResultSet();
+			
+			while(contactResults.next()){
+				
+				c = new Contact();
+				c.name = checkNull(contactResults.getString("name")); //$NON-NLS-1$
+				c.gender = checkNull(contactResults.getString("gender")); //$NON-NLS-1$
+				c.phoneNumber = checkNull(contactResults.getString("phone")); //$NON-NLS-1$
+				c.email = checkNull(contactResults.getString("email")); //$NON-NLS-1$
+				
+			}
+			
+			if(c != null)
+				getCustomFields(id, mysql);
+			
+		}catch(SQLException e){
+			
+			e.printStackTrace();
+			LOGGER.severe("SQL Error while getting contact " + id); //$NON-NLS-1$
+			
+		}finally{
+			
+			if(selectContact != null){//Close Statement
+	        	try{
+	        		selectContact.close();
+	        		selectContact = null;
+	        	}catch(Exception e){}
+	        }
+	    	
+		}
+		
+		return c;
+		
+	}
+
+	
+	private void updateCustomFields(Contact contact, Contact existing,
+			Connection mysql) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	private HashMap<String, String> getCustomFields(int id, Connection mysql) {
+		//TODO close resultset on this and one of the other contact things
+		HashMap<String, String> custom = new HashMap<String, String>();
+		
+		String[] tables = {"contact_values_large", "contact_values_medium",  //$NON-NLS-1$ //$NON-NLS-2$
+				"contact_values_small"}; //$NON-NLS-1$
+		
+		for (int i = 0; i < tables.length; i++){
+			
+			String SQL = "SELECT `contact_fields`.`label`, `" + tables[i] +  //$NON-NLS-1$
+				"`.`value` FROM `contact_fields` INNER JOIN `" + tables[i] + //$NON-NLS-1$
+				"` ON `" + tables[i] + "`.`field_id` = `contact_fields`.`id` " + //$NON-NLS-1$ //$NON-NLS-2$
+				"WHERE `" + tables[i] + "`.`owner_id` = ?"; //$NON-NLS-1$ //$NON-NLS-2$
+			
+			LOGGER.info("Getting custom for Contact: " + id); //$NON-NLS-1$
+			
+			PreparedStatement selectContact = null;
+			ResultSet customResults = null;
+			Contact c = null;
+			
+			try{
+				
+				//Bind all variables to statement
+				selectContact = mysql.prepareStatement(SQL);
+				selectContact.setInt(1, id);
+				
+				//Execute it
+				selectContact.execute();
+				customResults = selectContact.getResultSet();
+				
+				while(customResults.next()){
+					
+					custom.put(results.getString(""), value)
+					c.name = checkNull(customResults.getString("name")); //$NON-NLS-1$
+					c.gender = checkNull(customResults.getString("gender")); //$NON-NLS-1$
+					c.phoneNumber = checkNull(customResults.getString("phone")); //$NON-NLS-1$
+					c.email = checkNull(customResults.getString("email")); //$NON-NLS-1$
+					
+				}
+				
+				if(c != null)
+					getCustomFields(id, mysql);
+				
+			}catch(SQLException e){
+				
+				e.printStackTrace();
+				LOGGER.severe("SQL Error while getting contact " + id); //$NON-NLS-1$
+				
+			}finally{
+				
+				if(selectContact != null){//Close Statement
+		        	try{
+		        		selectContact.close();
+		        		selectContact = null;
+		        	}catch(Exception e){}
+		        }
+		    	
+			}
+			
+		}
+		
+		return custom;
+		
+	}
+
 	/**
 	 * Writes the message content to a text file in the ARCHIVE location
 	 * @param fileID name of file and message record id it relates to
@@ -571,7 +810,20 @@ public class EmailArchiver extends Thread implements EmailReader {
 		body = stripExcessiveNewLines(body);
 		subject = stripExcessiveNewLines(subject);
 		
-		int existingContactId = getContactId(from, name, sms);
+		Contact c = null;
+		
+		if(subject.endsWith("form submitted") && name == null) //$NON-NLS-1$
+			c = parseFormInformation(body);
+			
+		if(c != null){
+			
+			if(c.name != null)
+				name = c.name;
+			
+		}
+			
+		
+		int existingContactId = getContactId(from, name, sms, c);
 		String preview = body.replaceAll("\n", "  ").replaceAll("\r", ""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 		
 		if(preview.startsWith("S:"))//Remove Subject prefix don't need it in preview //$NON-NLS-1$
@@ -653,6 +905,102 @@ public class EmailArchiver extends Thread implements EmailReader {
 		}
 		
 		return success;
+		
+	}
+
+	/**
+	 * Creates a Contact based on website contact forms
+	 * @param body body of the email to parse
+	 * @return null if we found nothing useful else a contact with set vars
+	 * for whatever section we found (null if they are not set)
+	 */
+	private Contact parseFormInformation(String body) {
+		
+		String[] lines = body.split("\n"); //$NON-NLS-1$
+		Contact c = new Contact();
+		boolean addedInfo = false;
+		
+		for(String temp : lines){
+		
+			String[] field = temp.split(":"); //$NON-NLS-1$
+			
+			if(field[0].toLowerCase().startsWith("gender")){ //$NON-NLS-1$
+				
+				c.gender = field[1].trim().substring(0, 1).toUpperCase();
+				addedInfo = true;
+				
+			}else if(field[0].toLowerCase().startsWith("name")){ //$NON-NLS-1$
+				
+				c.name = field[1].trim();
+				addedInfo = true;
+			
+			}else if(field[0].toLowerCase().startsWith("email")){ //$NON-NLS-1$
+				
+				c.email = field[1].trim();//Don't really need this but whatever
+				addedInfo = true;
+				
+			}else if(field[0].toLowerCase().startsWith("phone")){ //$NON-NLS-1$
+				
+				c.phoneNumber = field[1].trim();
+				
+				while(c.phoneNumber.startsWith("+")) //$NON-NLS-1$
+					c.phoneNumber = c.phoneNumber.substring(1);
+				
+				addedInfo = true;
+				
+			}else if(field[0].toLowerCase().startsWith("house")){ //$NON-NLS-1$
+				
+				c.address = field[1].trim();
+				
+				for(int i = 2; i < field.length; i++)
+					c.address += " " + field[i].trim(); //$NON-NLS-1$
+				
+				addedInfo = true;
+				
+			}else if(field[0].toLowerCase().startsWith("city")){ //$NON-NLS-1$
+				
+				if(c.address == null)
+					c.address = field[1].trim();
+				else
+					c.address += "\n" + field[1].trim(); //$NON-NLS-1$
+				
+				c.city = field[1].trim();
+				
+				for(int i = 2; i < field.length; i++){
+					
+					c.address += " " + field[i].trim(); //$NON-NLS-1$
+					c.city += " " + field[i].trim(); //$NON-NLS-1$
+					
+				}
+				
+				addedInfo = true;
+				
+			}else if(field[0].toLowerCase().startsWith("country")){ //$NON-NLS-1$
+				
+				if(c.address == null)
+					c.address = field[1].trim();
+				else
+					c.address += "\n" + field[1].trim(); //$NON-NLS-1$
+				
+				c.country = field[1].trim();
+				
+				for(int i = 2; i < field.length; i++){
+					
+					c.address += " " + field[i].trim(); //$NON-NLS-1$
+					c.country += " " + field[i].trim(); //$NON-NLS-1$
+					
+				}
+				
+				addedInfo = true;
+				
+			}
+			
+		}
+		
+		if(!addedInfo)
+			c = null;
+		
+		return c;
 		
 	}
 
