@@ -8,20 +8,282 @@ import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.thevoiceasia.database.DatabaseHelper;
 
 public class Contact {
 
-	private String name = null, email = null, gender = null, phoneNumber = null, 
-			address = null, city = null, country = null;
-	private int id = -1;
+	private String name = null, email = null, gender = null, phoneNumber = null,
+			language = null, photo = null, status = null, autoReply = null;
+	private int id = -1, languageID = -1, assignedUser = -1;
+	private long created = -1, updated = -1;
 	
-	public Contact(DatabaseHelper database, String from, String name2,
+	private DatabaseHelper database = null;
+
+	private static final Logger LOGGER = Logger.getLogger("com.thevoiceasia.contact.Contact"); //$NON-NLS-1$
+	private static final Level LEVEL = Level.INFO;//Logging level of this class
+	private static final String SELECT_CONTACT = 
+			"SELECT `contacts`.`id`, `contacts`.`name`, `contacts`.`gender`, " + //$NON-NLS-1$
+			"	`languages`.`language`, `contacts`.`language_id`, " + //$NON-NLS-1$
+			"	`contacts`.`phone`, " + //$NON-NLS-1$
+			"	`contacts`.`email`, `contacts`.`photo`, " + //$NON-NLS-1$
+			"	`contacts`.`assigned_user_id`, `contacts`.`created`, " + //$NON-NLS-1$
+			"	`contacts`.`updated`, `contacts`.`status`, " + //$NON-NLS-1$
+			"	`contacts`.`auto_reply`" + //$NON-NLS-1$
+			"FROM `contacts` INNER JOIN `languages` ON " + //$NON-NLS-1$
+			"	`contacts`.`language_id` = `languages`.`id` "; //$NON-NLS-1$
+	
+	/**
+	 * Creates a Contact and populates with info from the database 
+	 * @param database
+	 * @param email Email/SMS Email coming in
+	 * @param name Contact name if we got it from the email
+	 * @param sms true if this is an SMS message not an email
+	 */
+	public Contact(DatabaseHelper database, String email, String name,
 			boolean sms) {
-		// TODO Auto-generated constructor stub
+		
+		this.name = name;
+		this.database = database;
+		
+		/* Search via email or sms, don't use name as identifier as we have no 
+		 * way to tell which Mr Singh is this Mr Singh.
+		 * 
+		 * This will inevitably lead to some duplicates if we have old contacts
+		 * who don't have an email/sms in the db yet
+		 */
+		if(sms){//XpressMS = 1234567890@sms.xpressms.com
+			
+			phoneNumber = email.split("@")[0];  //$NON-NLS-1$
+			populateByPhone();
+			
+		}else{
+			
+			this.email = email;
+			populateByEmail();
+			
+		}
+		
 	}
 
+	/**
+	 * Populates contact from DB by phone number
+	 * Will create if contact does not exist
+	 */
+	private void populateByPhone(){
+	
+		if(!populate("WHERE `phone` LIKE ?", "%" + phoneNumber)) //$NON-NLS-1$ //$NON-NLS-2$
+			createNewContact();
+		
+	}
+	
+	/**
+	 * Populates contact from DB by email
+	 * Will create if contact does not exist
+	 */
+	private void populateByEmail(){
+		
+		if(!populate("WHERE `email` = ?", email)) //$NON-NLS-1$
+			createNewContact();
+	}
+	
+	/**
+	 * Grabs contact info from the database
+	 * @param whereClause e.g. WHERE email = ?
+	 * @param searchTerm variable to bind to where clause
+	 * @return true if existing contact
+	 */
+	private boolean populate(String whereClause, String searchTerm){
+		
+		boolean existing = false;
+		
+		Connection mysql = null;
+		PreparedStatement select = null;
+		ResultSet contact = null;
+		
+		try{
+			
+			mysql = database.getConnection();
+			select = mysql.prepareStatement(SELECT_CONTACT + whereClause);
+			
+			select.setString(1, searchTerm);
+			
+			if(select.execute()){
+				
+				contact = select.getResultSet();
+				
+				while(contact.next()){
+					
+					//ID
+					id = contact.getInt("id"); //$NON-NLS-1$
+					
+					//NAME: update DB if we have a better name than DB
+					//else use name from DB
+					if(contact.getString("name").equals("Unknown") &&  //$NON-NLS-1$ //$NON-NLS-2$
+							name != null)
+						updateName();
+					else if(!contact.getString("name").equals("Unknown")) //$NON-NLS-1$ //$NON-NLS-2$
+						name = contact.getString("name"); //$NON-NLS-1$
+					
+					//GENDER
+					gender = contact.getString("gender"); //$NON-NLS-1$
+					
+					//Language ID
+					languageID = contact.getInt("language_id"); //$NON-NLS-1$
+					
+					//Language
+					language = contact.getString("language"); //$NON-NLS-1$
+					
+					//Phone
+					if(checkNull(contact.getString("phone")) == null &&  //$NON-NLS-1$
+							phoneNumber != null)
+						updatePhone();
+					else if(checkNull(contact.getString("phone")) != null) //$NON-NLS-1$
+						phoneNumber = contact.getString("phone"); //$NON-NLS-1$
+					
+					//Email
+					if(checkNull(contact.getString("email")) == null &&  //$NON-NLS-1$
+							email != null)
+						updateEmail();
+					else if(checkNull(contact.getString("phone")) != null) //$NON-NLS-1$
+						phoneNumber = contact.getString("phone"); //$NON-NLS-1$
+					
+					//Photo
+					photo = contact.getString("photo"); //$NON-NLS-1$
+					
+					//Assigned User
+					assignedUser = contact.getInt("assigned_user_id"); //$NON-NLS-1$
+					
+					//Created
+					created = contact.getLong("created"); //$NON-NLS-1$
+					
+					//Updated
+					if(updated != -1) //Set by updateName || Phone || Email
+						updated = contact.getLong("updated"); //$NON-NLS-1$
+					
+					//Status
+					status = contact.getString("status"); //$NON-NLS-1$
+					
+					//Auto Reply
+					autoReply = contact.getString("auto_reply"); //$NON-NLS-1$
+					
+					//Flag existing success
+					existing = true;
+					
+				}
+				
+			}
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Error while getting contact info from db for id: " + id); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			if(contact != null){
+				
+				try{
+					contact.close();
+				}catch(Exception e){}
+				
+				contact = null;
+				
+			}
+			
+			if(select != null){
+				
+				try{
+					select.close();
+				}catch(Exception e){}
+				
+				select = null;
+				
+			}
+			
+		}
+		
+		return existing;
+		
+	}
+	
+	private void updateEmail(){
+		//TODO
+	}
+	
+	private void updatePhone(){
+		//TODO
+	}
+	
+	/**
+	 * Sets the name of the given contact
+	 * @param id id of record to change
+	 * @param name name to change it to
+	 * @return true if successfully updated
+	 */
+	private boolean updateName() {
+		
+		boolean success = false;
+		
+		if(name == null)//Use contact name as we must have had that as not null
+			name = contact.name;
+		
+		String SQL = "UPDATE `contacts` SET `name` = ?, `updated` = ? WHERE `id` = ?"; //$NON-NLS-1$
+		
+		LOGGER.info("Updating Name for " + id + " to " + name); //$NON-NLS-1$ //$NON-NLS-2$
+		
+		Connection mysql = database.getConnection();
+		
+		PreparedStatement updateContact = null;
+		
+		try{
+			
+			//Bind all variables to statement
+			updateContact = mysql.prepareStatement(SQL);
+			updateContact.setString(1, name);
+			updateContact.setString(2, new SimpleDateFormat(
+					"yyyyMMddHHmmss").format(new Date())); //$NON-NLS-1$
+			updateContact.setInt(3, id);
+			
+			//Execute it
+			int rows = updateContact.executeUpdate();
+			
+			if(rows > 0)
+				success = true;
+			
+			if(contact != null)
+				updateContact(id, contact, mysql);
+				
+		}catch(SQLException e){
+			
+			e.printStackTrace();
+			LOGGER.severe("SQL Error while updating name on contact " + id + //$NON-NLS-1$
+					" to " + name);  //$NON-NLS-1$
+			
+		}finally{
+			
+			if(updateContact != null){//Close Statement
+            	try{
+            		updateContact.close();
+            		updateContact = null;
+            	}catch(Exception e){}
+            }
+        	
+		}
+		
+		return success;
+		
+	}
+	
+	private boolean createNewContact(){
+	
+		//TODO
+		return true;
+		
+	}
+	
 	public void updateWithWebForm(String form){
 	
 		//TODO update based on the form
@@ -144,149 +406,9 @@ public class Contact {
 		
 	}
 	
-	/**
-	 * Sets the name of the given contact
-	 * @param id id of record to change
-	 * @param name name to change it to
-	 * @return true if successfully updated
-	 */
-	private boolean updateName(int id, String name, Contact contact) {
-		
-		boolean success = false;
-		
-		if(name == null)//Use contact name as we must have had that as not null
-			name = contact.name;
-		
-		String SQL = "UPDATE `contacts` SET `name` = ?, `updated` = ? WHERE `id` = ?"; //$NON-NLS-1$
-		
-		LOGGER.info("Updating Name for " + id + " to " + name); //$NON-NLS-1$ //$NON-NLS-2$
-		
-		Connection mysql = database.getConnection();
-		
-		PreparedStatement updateContact = null;
-		
-		try{
-			
-			//Bind all variables to statement
-			updateContact = mysql.prepareStatement(SQL);
-			updateContact.setString(1, name);
-			updateContact.setString(2, new SimpleDateFormat(
-					"yyyyMMddHHmmss").format(new Date())); //$NON-NLS-1$
-			updateContact.setInt(3, id);
-			
-			//Execute it
-			int rows = updateContact.executeUpdate();
-			
-			if(rows > 0)
-				success = true;
-			
-			if(contact != null)
-				updateContact(id, contact, mysql);
-				
-		}catch(SQLException e){
-			
-			e.printStackTrace();
-			LOGGER.severe("SQL Error while updating name on contact " + id + //$NON-NLS-1$
-					" to " + name);  //$NON-NLS-1$
-			
-		}finally{
-			
-			if(updateContact != null){//Close Statement
-            	try{
-            		updateContact.close();
-            		updateContact = null;
-            	}catch(Exception e){}
-            }
-        	
-		}
-		
-		return success;
-		
-	}
 	
-	/**
-	 * Gets a contact id from the contacts table, if no contact exists, it will be created
-	 * @param fromAddress Address to lookup
-	 * @param name Name of contact or null if none
-	 * @param smsMessage if this is an sms message it searches by phone and not email
-	 * @return id of existing or new contact
-	 */
-	private int getContactId(String fromAddress, String name, 
-			boolean smsMessage, Contact contact) {
-		
-		int id = -1;
-		
-		String SQL = "SELECT `id`, `name` FROM `contacts` WHERE `email` = ?"; //$NON-NLS-1$
-		
-		if(smsMessage){
-			
-			SQL = "SELECT `id` FROM `contacts` WHERE `phone` LIKE ?"; //$NON-NLS-1$
-			fromAddress = "%" + fromAddress.split("@")[0];  //$NON-NLS-1$//$NON-NLS-2$
-			
-		}
-		
-		Connection mysql = database.getConnection();
-		PreparedStatement selectContact = null;
-		ResultSet contactIDs = null;
-		
-		try{
-			
-			//Bind all variables to statement
-			selectContact = mysql.prepareStatement(SQL);
-			selectContact.setString(1, fromAddress);
-			
-			//Execute it
-			if(selectContact.execute()){
-			
-				contactIDs = selectContact.getResultSet();
-				
-				while(contactIDs.next()){
-					
-					id = contactIDs.getInt(1);
-					
-					if((name != null || contact.name != null) && contactIDs.getString(2).equals("Unknown")) //$NON-NLS-1$
-						updateName(id, name, contact);
-					
-				}
-				
-				if(id != -1)
-					LOGGER.finest("Found contact ID For: " + fromAddress); //$NON-NLS-1$
-				else{
-					if(smsMessage)
-						fromAddress = fromAddress.substring(1);//Remove prefix of % for like lookup
-					
-					id = createNewContact(fromAddress, name, smsMessage, 
-							contact);
-					
-				}
-			}
-			
-		}catch(SQLException e){
-			
-			e.printStackTrace();
-			LOGGER.severe("SQL Error while looking up contact ID for " + fromAddress); //$NON-NLS-1$
-			
-		}finally{
-			
-			if(contactIDs != null){
-            	try{
-            		contactIDs.close();
-            		contactIDs = null;
-            	}catch(Exception e){}
-            }
-            	
-            if(selectContact != null){//Close Statement
-            	try{
-            		selectContact.close();
-            		selectContact = null;
-            	}catch(Exception e){}
-            }
-        	
-		}
-		
-		return id;
-		
-	}
+	
+	
 	
 	/**
 	 * Creates a new contact
