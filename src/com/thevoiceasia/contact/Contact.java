@@ -19,7 +19,7 @@ public class Contact {
 			language = null, photo = null, status = null, autoReply = null;
 	private int id = -1, languageID = -1, assignedUser = -1;
 	private long created = -1, updated = -1;
-	
+	private boolean sms = false;
 	private DatabaseHelper database = null;
 
 	private static final Logger LOGGER = Logger.getLogger("com.thevoiceasia.contact.Contact"); //$NON-NLS-1$
@@ -36,6 +36,7 @@ public class Contact {
 			boolean sms) {
 		
 		this.name = name;
+		this.sms = sms;
 		this.database = database;
 		
 		/* Search via email or sms, don't use name as identifier as we have no 
@@ -285,47 +286,129 @@ public class Contact {
 		
 	}
 	
-	private boolean createNewContact(){
-	
-		//TODO
-		return true;
+	/**
+	 * Quick identifier string prefers name, email/phone if no name
+	 * @return whatever is not null
+	 */
+	private String getIdentifierName(){
+		
+		String identifier = null;
+				
+		if(name != null)
+			identifier = name;
+		else if(email != null && !sms)
+			identifier = email;
+		else if(phoneNumber != null && sms)
+			identifier = phoneNumber;
+		
+		return identifier;
 		
 	}
 	
+	/**
+	 * Actually runs an insert with the given SQL and values, only works
+	 * if values are all strings!
+	 * @param SQL 
+	 * @param values
+	 * @return
+	 */
+	private boolean insertNewContact(String SQL, String[] values){
+		
+		boolean inserted = false;
+		
+		LOGGER.info("Creating new contact for " + getIdentifierName()); //$NON-NLS-1$
+		
+		Connection mysql = database.getConnection();
+		PreparedStatement insertContact = null;
+		ResultSet contactIDs = null;
+		
+		try{
+			
+			//Bind all variables to statement
+			insertContact = mysql.prepareStatement(SQL, Statement.RETURN_GENERATED_KEYS);
+			
+			for(int i = 1; i <= values.length; i++)
+				insertContact.setString(i, values[i]);
+			
+			//Execute it
+			int rows = insertContact.executeUpdate();
+			
+			if(rows > 0){
+			
+				contactIDs = insertContact.getGeneratedKeys();
+				
+				while(contactIDs.next())
+					id = contactIDs.getInt(1);
+				
+				inserted = true;
+				
+			}
+			
+		}catch(SQLException e){
+			
+			e.printStackTrace();
+			LOGGER.severe("SQL Error while creating new contact for " + //$NON-NLS-1$
+					getIdentifierName()); 
+			
+		}finally{
+			
+			if(contactIDs != null){
+            	try{
+            		contactIDs.close();
+            		contactIDs = null;
+            	}catch(Exception e){}
+            }
+            	
+            if(insertContact != null){//Close Statement
+            	try{
+            		insertContact.close();
+            		insertContact = null;
+            	}catch(Exception e){}
+            }
+        	
+		}
+		
+		return inserted;
+		
+	}
+	
+	/**
+	 * Creates a new contact using object creation info
+	 * @return true if successful
+	 */
+	private boolean createNewContact() {
+		
+		String SQL = "INSERT INTO `contacts` (`email`) VALUES (?)"; //$NON-NLS-1$
+		String[] values = {email};
+		
+		if(name != null && !sms){
+			
+			SQL = "INSERT INTO `contacts` (`email`, `name`) VALUES (?, ?)"; //$NON-NLS-1$
+			values = new String[]{email, name};
+			
+		}else if(name == null && sms){
+			
+			SQL = "INSERT INTO `contacts` (`phone`) VALUES (?)"; //$NON-NLS-1$
+			values = new String[]{phoneNumber};
+			
+		}else if(name != null && sms){ //I think name will always be null for an SMS but just in case
+		
+			SQL = "INSERT INTO `contacts` (`phone`, `name`) VALUES (?, ?)"; //$NON-NLS-1$
+			values = new String[]{phoneNumber, name};
+			
+		}
+			
+		return insertNewContact(SQL, values);
+		
+	}
+	
+	/**
+	 * Use form email to update this contact as appropriate
+	 * @param form
+	 */
 	public void updateWithWebForm(String form){
 	
 		//TODO update based on the form
-		
-	}
-	
-	/**
-	 * Returns the record id of this contact in the contacts table
-	 * @return
-	 */
-	public int getID(){
-		
-		return id;
-		
-	}
-	
-	/**
-	 * Returns the "name" of this contact e.g. Fred Rogers
-	 * @return name or null if not set
-	 */
-	public String getName(){
-		
-		return name;
-		
-	}
-	
-	/**
-	 * Creates a Contact based on website contact forms
-	 * @param body body of the email to parse
-	 * @return null if we found nothing useful else a contact with set vars
-	 * for whatever section we found (null if they are not set)
-	 */
-	private Contact parseFormInformation(String body) {
-		
 		String[] lines = body.split("\n"); //$NON-NLS-1$
 		Contact c = new Contact();
 		boolean addedInfo = false;
@@ -411,90 +494,25 @@ public class Contact {
 			c = null;
 		
 		return c;
+	}
+	
+	/**
+	 * Returns the record id of this contact in the contacts table
+	 * @return
+	 */
+	public int getID(){
+		
+		return id;
 		
 	}
 	
-	
-	
-	
-	
 	/**
-	 * Creates a new contact
-	 * @param fromAddress either phone or sms number to create with
-	 * @param name Name of contact to save
-	 * @param smsMessage if sms then we'll insert the fromAddress into the phone field
-	 * @param contact Contact object that may be null or may have useful info
-	 * else we'll just enter it as an email address
-	 * @return id of inserted contact record
+	 * Returns the "name" of this contact e.g. Fred Rogers
+	 * @return name or null if not set
 	 */
-	private int createNewContact(String fromAddress, String name, 
-			boolean smsMessage, Contact contact) {
+	public String getName(){
 		
-		int id = -1;
-		
-		String SQL = "INSERT INTO `contacts` (`email`) VALUES (?)"; //$NON-NLS-1$
-		
-		if(name != null && !smsMessage)
-			SQL = "INSERT INTO `contacts` (`email`, `name`) VALUES (?, ?)"; //$NON-NLS-1$
-		else if(name == null && smsMessage)
-			SQL = "INSERT INTO `contacts` (`phone`) VALUES (?)"; //$NON-NLS-1$
-		else if(name != null && smsMessage) //I think name will always be null for an SMS but just in case
-			SQL = "INSERT INTO `contacts` (`phone`, `name`) VALUES (?, ?)"; //$NON-NLS-1$
-			
-		LOGGER.info("Creating new contact for " + fromAddress); //$NON-NLS-1$
-		
-		Connection mysql = database.getConnection();
-		PreparedStatement insertContact = null;
-		ResultSet contactIDs = null;
-		
-		try{
-			
-			//Bind all variables to statement
-			insertContact = mysql.prepareStatement(SQL, Statement.RETURN_GENERATED_KEYS);
-			insertContact.setString(1, fromAddress);
-			
-			if(name != null)
-				insertContact.setString(2, name);
-			
-			//Execute it
-			int rows = insertContact.executeUpdate();
-			
-			if(rows > 0){
-			
-				contactIDs = insertContact.getGeneratedKeys();
-				
-				while(contactIDs.next())
-					id = contactIDs.getInt(1);
-				
-				if(contact != null)
-					updateContact(id, contact, mysql);
-				
-			}
-			
-		}catch(SQLException e){
-			
-			e.printStackTrace();
-			LOGGER.severe("SQL Error while creating new contact for " + fromAddress); //$NON-NLS-1$
-			
-		}finally{
-			
-			if(contactIDs != null){
-            	try{
-            		contactIDs.close();
-            		contactIDs = null;
-            	}catch(Exception e){}
-            }
-            	
-            if(insertContact != null){//Close Statement
-            	try{
-            		insertContact.close();
-            		insertContact = null;
-            	}catch(Exception e){}
-            }
-        	
-		}
-		
-		return id;
+		return name;
 		
 	}
 	
