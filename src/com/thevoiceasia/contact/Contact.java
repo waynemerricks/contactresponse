@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.logging.Level;
@@ -33,6 +34,7 @@ public class Contact {
 	public Contact(){
 	
 		//All set at instantiation to null or -1
+		LOGGER.setLevel(LEVEL);
 		
 	}
 	
@@ -45,6 +47,8 @@ public class Contact {
 	 */
 	public Contact(DatabaseHelper database, String email, String name,
 			boolean sms) {
+		
+		LOGGER.setLevel(LEVEL);
 		
 		this.name = name;
 		this.sms = sms;
@@ -300,7 +304,8 @@ public class Contact {
 	}
 	
 	/**
-	 * Quick identifier string prefers name, email/phone if no name
+	 * Quick identifier string prefers name, email/phone if no name or id if
+	 * all else fails
 	 * @return whatever is not null
 	 */
 	private String getIdentifierName(){
@@ -313,6 +318,8 @@ public class Contact {
 			identifier = email;
 		else if(phoneNumber != null && sms)
 			identifier = phoneNumber;
+		else
+			identifier = "" + id; //$NON-NLS-1$
 		
 		return identifier;
 		
@@ -501,16 +508,30 @@ public class Contact {
 			
 			String address = null; 
 			
-			if(custom.containsKey("house")) //$NON-NLS-1$
+			if(custom.containsKey("house")){ //$NON-NLS-1$
+				
 				address = custom.get("house"); //$NON-NLS-1$
+				custom.remove("house"); //$NON-NLS-1$
+				
+			}
 			
-			if(custom.containsKey("city") && address != null) //$NON-NLS-1$
-				address = custom.get("city"); //$NON-NLS-1$
-			else if(custom.containsKey("city")) //$NON-NLS-1$
-				address += "\n" + custom.get("city"); //$NON-NLS-1$ //$NON-NLS-2$
-			
-			if(address != null)
+			if(custom.containsKey("city")){ //$NON-NLS-1$
+				
+				if(address == null)
+					address = custom.get("city"); //$NON-NLS-1$
+				else
+					address += "\n" + custom.get("city"); //$NON-NLS-1$ //$NON-NLS-2$
+				
+				custom.remove("city"); //$NON-NLS-1$
+				
+			}
+				
+			if(address != null){
+				
 				addedInfo = true;
+				custom.put("Address", address); //$NON-NLS-1$
+				
+			}
 			
 		}
 		
@@ -523,73 +544,93 @@ public class Contact {
 	 * Update a contact with the objects current information
 	 */
 	private void update() {
-		//TODO
-		String SQL = "UPDATE `contacts` SET `updated` = ? "; //$NON-NLS-1$
 		
-		Contact existing = getContact(id, mysql);
+		String SQL = "UPDATE `contacts` SET `updated` = NOW()"; //$NON-NLS-1$
 		
-		if(contact.phoneNumber != null && existing.phoneNumber == null)
-			SQL += " `phone` = ? "; //$NON-NLS-1$
+		ArrayList<Object> values = new ArrayList<Object>();
 		
-		if(contact.gender != null && existing.gender == null)
-			SQL += " `gender` = ? "; //$NON-NLS-1$
-		
-		SQL += "WHERE `id` = ?"; //$NON-NLS-1$
-		
-		if(SQL.length() > 50){//50 is the length without any fields so don't update
+		//Name
+		if(name != null){
 			
-			LOGGER.info("Updating Contact with Form info"); //$NON-NLS-1$
+			SQL += ", `name` = ?"; //$NON-NLS-1$
+			values.add(name);
 			
-			PreparedStatement updateContact = null;
-			
-			try{
-				
-				//Bind all variables to statement
-				updateContact = mysql.prepareStatement(SQL);
-				updateContact.setString(1, new SimpleDateFormat(
-						"yyyyMMddHHmmss").format(new Date())); //$NON-NLS-1$
-				
-				int nextIndex = 2;
-				
-				if(contact.phoneNumber != null && existing.phoneNumber == null){
-			
-					updateContact.setString(nextIndex, contact.phoneNumber);
-					nextIndex++;
-					
-				}
-				
-				if(contact.gender != null && existing.gender == null){
-			
-					updateContact.setString(nextIndex, contact.gender);
-					nextIndex++;
-					
-				}
-				
-				updateContact.setInt(nextIndex, id);
-				
-				//Execute it
-				updateContact.executeUpdate();
-				
-				updateCustomFields(contact, existing, mysql);
-				
-			}catch(SQLException e){
-				
-				e.printStackTrace();
-				LOGGER.severe("SQL Error while updating contact " + id); //$NON-NLS-1$
-				
-			}finally{
-				
-				if(updateContact != null){//Close Statement
-		        	try{
-		        		updateContact.close();
-		        		updateContact = null;
-		        	}catch(Exception e){}
-		        }
-		    	
-			}
-		
 		}
 		
+		//Gender
+		if(gender != null && !gender.equals("U")){ //$NON-NLS-1$
+			
+			SQL += ", `gender` = ? "; //$NON-NLS-1$
+			values.add(gender);
+			
+		}
+		
+		//Number
+		if(phoneNumber != null){
+			
+			SQL += ", `phone` = ?"; //$NON-NLS-1$
+			values.add(phoneNumber);
+			
+		}
+				
+		//Email
+		if(email != null && !email.endsWith("@invalidEmail.com")){ //$NON-NLS-1$
+			
+			SQL += ", `email` = ? "; //$NON-NLS-1$
+			values.add(email);
+			
+		}
+						
+		SQL += " WHERE `id` = ?"; //$NON-NLS-1$
+		
+		LOGGER.info("Updating Contact " + getIdentifierName()); //$NON-NLS-1$
+		
+		PreparedStatement updateContact = null;
+		
+		try{
+			
+			//Bind all variables to statement
+			updateContact = database.getConnection().prepareStatement(SQL);
+			
+			updateContact.setString(1, new SimpleDateFormat(
+					"yyyyMMddHHmmss").format(new Date())); //$NON-NLS-1$
+			
+			int nextIndex = 2;
+			
+			while(nextIndex - 2 < values.size()){
+				
+				if(values.get(nextIndex - 2) instanceof String)
+					updateContact.setString(nextIndex, 
+							(String)values.get(nextIndex - 2));
+			
+				nextIndex++;
+				
+			}
+			
+			updateContact.setInt(nextIndex, id);
+			
+			//Execute it
+			updateContact.executeUpdate();
+			
+			if(custom.size() > 0)//Update Custom fields if we have some
+				updateCustomFields();
+			
+		}catch(SQLException e){
+			
+			e.printStackTrace();
+			LOGGER.severe("SQL Error while updating contact " + getIdentifierName()); //$NON-NLS-1$
+			
+		}finally{
+			
+			if(updateContact != null){//Close Statement
+	        	try{
+	        		updateContact.close();
+	        		updateContact = null;
+	        	}catch(Exception e){}
+	        }
+	    	
+		}
+	
 	}
 	
 	private void updateCustomFields() {
@@ -631,6 +672,9 @@ public class Contact {
 		
 	}
 	
+	/**
+	 * Reads custom fields into the custom hashmap
+	 */
 	private void populateCustomFields(){
 		
 		String[] tables = {"contact_values_large", "contact_values_medium",  //$NON-NLS-1$ //$NON-NLS-2$
