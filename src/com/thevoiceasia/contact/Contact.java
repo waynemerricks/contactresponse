@@ -24,16 +24,6 @@ public class Contact {
 
 	private static final Logger LOGGER = Logger.getLogger("com.thevoiceasia.contact.Contact"); //$NON-NLS-1$
 	private static final Level LEVEL = Level.INFO;//Logging level of this class
-	private static final String SELECT_CONTACT = 
-			"SELECT `contacts`.`id`, `contacts`.`name`, `contacts`.`gender`, " + //$NON-NLS-1$
-			"	`languages`.`language`, `contacts`.`language_id`, " + //$NON-NLS-1$
-			"	`contacts`.`phone`, " + //$NON-NLS-1$
-			"	`contacts`.`email`, `contacts`.`photo`, " + //$NON-NLS-1$
-			"	`contacts`.`assigned_user_id`, `contacts`.`created`, " + //$NON-NLS-1$
-			"	`contacts`.`updated`, `contacts`.`status`, " + //$NON-NLS-1$
-			"	`contacts`.`auto_reply`" + //$NON-NLS-1$
-			"FROM `contacts` INNER JOIN `languages` ON " + //$NON-NLS-1$
-			"	`contacts`.`language_id` = `languages`.`id` "; //$NON-NLS-1$
 	
 	/**
 	 * Creates a Contact and populates with info from the database 
@@ -103,11 +93,21 @@ public class Contact {
 		PreparedStatement select = null;
 		ResultSet contact = null;
 		
+		String SQL = 
+				"SELECT `contacts`.`id`, `contacts`.`name`, `contacts`.`gender`, " + //$NON-NLS-1$
+				"	`languages`.`language`, `contacts`.`language_id`, " + //$NON-NLS-1$
+				"	`contacts`.`phone`, " + //$NON-NLS-1$
+				"	`contacts`.`email`, `contacts`.`photo`, " + //$NON-NLS-1$
+				"	`contacts`.`assigned_user_id`, `contacts`.`created`, " + //$NON-NLS-1$
+				"	`contacts`.`updated`, `contacts`.`status`, " + //$NON-NLS-1$
+				"	`contacts`.`auto_reply`" + //$NON-NLS-1$
+				"FROM `contacts` INNER JOIN `languages` ON " + //$NON-NLS-1$
+				"	`contacts`.`language_id` = `languages`.`id` "; //$NON-NLS-1$
+		
 		try{
 			
 			mysql = database.getConnection();
-			select = mysql.prepareStatement(SELECT_CONTACT + whereClause);
-			
+			select = mysql.prepareStatement(SQL + whereClause);
 			select.setString(1, searchTerm);
 			
 			if(select.execute()){
@@ -209,12 +209,25 @@ public class Contact {
 		
 	}
 	
+	/**
+	 * Updates this contacts email in the DB with the one the object holds
+	 */
 	private void updateEmail(){
-		//TODO
+		updateField("email", email); //$NON-NLS-1$
 	}
 	
+	/**
+	 * Updates this contacts phone in the DB with the one the object holds
+	 */
 	private void updatePhone(){
-		//TODO
+		updateField("phone", phoneNumber); //$NON-NLS-1$
+	}
+	
+	/**
+	 * Updates this contacts name in the DB with the one the object holds
+	 */
+	private void updateName(){
+		updateField("name", name); //$NON-NLS-1$
 	}
 	
 	/**
@@ -223,16 +236,14 @@ public class Contact {
 	 * @param name name to change it to
 	 * @return true if successfully updated
 	 */
-	private boolean updateName() {
+	private boolean updateField(String name, String value) {
 		
 		boolean success = false;
 		
-		if(name == null)//Use contact name as we must have had that as not null
-			name = contact.name;
+		String SQL = "UPDATE `contacts` SET `" + name + "` = ?, `updated` = ? " +//$NON-NLS-1$ //$NON-NLS-2$
+				"WHERE `id` = ?"; //$NON-NLS-1$ 
 		
-		String SQL = "UPDATE `contacts` SET `name` = ?, `updated` = ? WHERE `id` = ?"; //$NON-NLS-1$
-		
-		LOGGER.info("Updating Name for " + id + " to " + name); //$NON-NLS-1$ //$NON-NLS-2$
+		LOGGER.info("Updating " + name + " for " + id + " to " + value); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 		
 		Connection mysql = database.getConnection();
 		
@@ -242,7 +253,7 @@ public class Contact {
 			
 			//Bind all variables to statement
 			updateContact = mysql.prepareStatement(SQL);
-			updateContact.setString(1, name);
+			updateContact.setString(1, value);
 			updateContact.setString(2, new SimpleDateFormat(
 					"yyyyMMddHHmmss").format(new Date())); //$NON-NLS-1$
 			updateContact.setInt(3, id);
@@ -252,15 +263,12 @@ public class Contact {
 			
 			if(rows > 0)
 				success = true;
-			
-			if(contact != null)
-				updateContact(id, contact, mysql);
 				
 		}catch(SQLException e){
 			
+			LOGGER.severe("SQL Error while updating " + name + " on contact " + id + //$NON-NLS-1$ //$NON-NLS-2$
+					" to " + value);  //$NON-NLS-1$
 			e.printStackTrace();
-			LOGGER.severe("SQL Error while updating name on contact " + id + //$NON-NLS-1$
-					" to " + name);  //$NON-NLS-1$
 			
 		}finally{
 			
@@ -563,66 +571,6 @@ public class Contact {
 			}
 		
 		}
-		
-	}
-	
-	/**
-	 * Gets a contact given its id
-	 * @param id id to search for
-	 * @param mysql read connection to DB
-	 * @return Contact or null if not found
-	 */
-	private Contact getContact(int id, Connection mysql) {
-		
-		String SQL = "SELECT `name`, `gender`, `phone`, `email` FROM `contacts` " + //$NON-NLS-1$
-				"WHERE id = ?"; //$NON-NLS-1$
-		
-		LOGGER.info("Getting Contact: " + id); //$NON-NLS-1$
-		
-		PreparedStatement selectContact = null;
-		ResultSet contactResults = null;
-		Contact c = null;
-		
-		try{
-			
-			//Bind all variables to statement
-			selectContact = mysql.prepareStatement(SQL);
-			selectContact.setInt(1, id);
-			
-			//Execute it
-			selectContact.execute();
-			contactResults = selectContact.getResultSet();
-			
-			while(contactResults.next()){
-				
-				c = new Contact();
-				c.name = checkNull(contactResults.getString("name")); //$NON-NLS-1$
-				c.gender = checkNull(contactResults.getString("gender")); //$NON-NLS-1$
-				c.phoneNumber = checkNull(contactResults.getString("phone")); //$NON-NLS-1$
-				c.email = checkNull(contactResults.getString("email")); //$NON-NLS-1$
-				
-			}
-			
-			if(c != null)
-				getCustomFields(id, mysql);
-			
-		}catch(SQLException e){
-			
-			e.printStackTrace();
-			LOGGER.severe("SQL Error while getting contact " + id); //$NON-NLS-1$
-			
-		}finally{
-			
-			if(selectContact != null){//Close Statement
-	        	try{
-	        		selectContact.close();
-	        		selectContact = null;
-	        	}catch(Exception e){}
-	        }
-	    	
-		}
-		
-		return c;
 		
 	}
 	
