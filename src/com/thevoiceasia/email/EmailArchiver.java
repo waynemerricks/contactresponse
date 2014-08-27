@@ -10,9 +10,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -364,20 +362,12 @@ public class EmailArchiver extends Thread implements EmailReader {
 		body = stripExcessiveNewLines(body);
 		subject = stripExcessiveNewLines(subject);
 		
-		Contact c = null;
+		Contact contact = new Contact(database, from, name, sms);
 		
-		if(subject.endsWith("form submitted") && name == null) //$NON-NLS-1$
-			c = parseFormInformation(body);
+		if(subject.endsWith("form submitted")) //$NON-NLS-1$
+			contact.updateWithWebForm(body);
 			
-		if(c != null){
-			
-			if(c.name != null)
-				name = c.name;
-			
-		}
-			
-		
-		int existingContactId = getContactId(from, name, sms, c);
+		int existingContactId = contact.getID();
 		String preview = body.replaceAll("\n", "  ").replaceAll("\r", ""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 		
 		if(preview.startsWith("S:"))//Remove Subject prefix don't need it in preview //$NON-NLS-1$
