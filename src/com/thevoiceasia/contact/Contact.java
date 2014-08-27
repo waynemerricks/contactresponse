@@ -9,13 +9,42 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 
+import com.thevoiceasia.database.DatabaseHelper;
+
 public class Contact {
 
-	public String name = null, email = null, gender = null, phoneNumber = null, 
+	private String name = null, email = null, gender = null, phoneNumber = null, 
 			address = null, city = null, country = null;
+	private int id = -1;
+	
+	public Contact(DatabaseHelper database, String from, String name2,
+			boolean sms) {
+		// TODO Auto-generated constructor stub
+	}
 
-	public Contact(DatabaseHelper database){
+	public void updateWithWebForm(String form){
+	
+		//TODO update based on the form
 		
+	}
+	
+	/**
+	 * Returns the record id of this contact in the contacts table
+	 * @return
+	 */
+	public int getID(){
+		
+		return id;
+		
+	}
+	
+	/**
+	 * Returns the "name" of this contact e.g. Fred Rogers
+	 * @return name or null if not set
+	 */
+	public String getName(){
+		
+		return name;
 		
 	}
 	
