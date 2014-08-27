@@ -421,9 +421,7 @@ public class Contact {
 	 */
 	public void updateWithWebForm(String form){
 	
-		//TODO update based on the form
 		String[] lines = form.split("\n"); //$NON-NLS-1$
-		Contact c = new Contact();
 		
 		boolean addedInfo = false;
 		
@@ -431,113 +429,101 @@ public class Contact {
 		
 			String[] field = temp.split(":"); //$NON-NLS-1$
 			
-			if(field[0].toLowerCase().startsWith("gender")){ //$NON-NLS-1$
+			if(field[0].toLowerCase().startsWith("gender") && //$NON-NLS-1$
+					(gender == null || gender.equals("U"))){ //$NON-NLS-1$
 				
-				c.gender = field[1].trim().substring(0, 1).toUpperCase();
+				gender = field[1].trim().substring(0, 1).toUpperCase();
 				addedInfo = true;
 				
-			}else if(field[0].toLowerCase().startsWith("name")){ //$NON-NLS-1$
+			}else if(field[0].toLowerCase().startsWith("name") && name == null){ //$NON-NLS-1$
 				
-				c.name = field[1].trim();
-				addedInfo = true;
-			
-			}else if(field[0].toLowerCase().startsWith("email")){ //$NON-NLS-1$
-				
-				c.email = field[1].trim();//Don't really need this but whatever
+				name = field[1].trim();
 				addedInfo = true;
 				
-			}else if(field[0].toLowerCase().startsWith("phone")){ //$NON-NLS-1$
+			}else if(field[0].toLowerCase().startsWith("email") && //$NON-NLS-1$
+					email == null){ 
 				
-				c.phoneNumber = field[1].trim();
-				
-				while(c.phoneNumber.startsWith("+")) //$NON-NLS-1$
-					c.phoneNumber = c.phoneNumber.substring(1);
-				
+				email = field[1].trim();//Don't really need this but whatever
 				addedInfo = true;
 				
-			}else if(field[0].toLowerCase().startsWith("house")){ //$NON-NLS-1$
+			}else if(field[0].toLowerCase().startsWith("phone") && //$NON-NLS-1$
+					phoneNumber == null){ 
 				
-				c.address = field[1].trim();
+				phoneNumber = field[1].trim();
 				
-				for(int i = 2; i < field.length; i++)
-					c.address += " " + field[i].trim(); //$NON-NLS-1$
+				while(phoneNumber.startsWith("+")) //$NON-NLS-1$
+					phoneNumber = phoneNumber.substring(1);
 				
 				addedInfo = true;
 				
-			}else if(field[0].toLowerCase().startsWith("city")){ //$NON-NLS-1$
+			}else if(!custom.containsKey("Address")){ //$NON-NLS-1$
 				
-				if(c.address == null)
-					c.address = field[1].trim();
-				else
-					c.address += "\n" + field[1].trim(); //$NON-NLS-1$
 				
-				c.city = field[1].trim();
+				if(field[0].toLowerCase().startsWith("house")){ //$NON-NLS-1$
 				
-				for(int i = 2; i < field.length; i++){
+					String house = field[1].trim();
 					
-					c.address += " " + field[i].trim(); //$NON-NLS-1$
-					c.city += " " + field[i].trim(); //$NON-NLS-1$
+					for(int i = 2; i < field.length; i++)
+						house += " " + field[i].trim(); //$NON-NLS-1$
 					
-				}
-				
-				addedInfo = true;
-				
-			}else if(field[0].toLowerCase().startsWith("country")){ //$NON-NLS-1$
-				
-				if(c.address == null)
-					c.address = field[1].trim();
-				else
-					c.address += "\n" + field[1].trim(); //$NON-NLS-1$
-				
-				c.country = field[1].trim();
-				
-				for(int i = 2; i < field.length; i++){
+					custom.put("house", house); //$NON-NLS-1$
 					
-					c.address += " " + field[i].trim(); //$NON-NLS-1$
-					c.country += " " + field[i].trim(); //$NON-NLS-1$
+				}else if(field[0].toLowerCase().startsWith("city")){ //$NON-NLS-1$
+				
+				
+					String city = field[1].trim();
+					for(int i = 2; i < field.length; i++)
+						city += " " + field[i].trim(); //$NON-NLS-1$
+						
+					custom.put("city", city); //$NON-NLS-1$
 					
 				}
 				
+			}else if(field[0].toLowerCase().startsWith("country") && //$NON-NLS-1$
+					custom.containsKey("Country")){ //$NON-NLS-1$
+				
+				String country = field[1].trim();
+				
+				for(int i = 2; i < field.length; i++){
+					
+					country += " " + field[i].trim(); //$NON-NLS-1$
+					
+				}
+				
+				custom.put("Country", country); //$NON-NLS-1$
 				addedInfo = true;
 				
 			}
 			
 		}
 		
-		if(!addedInfo)
-			c = null;
+		if(!custom.containsKey("Address")){ //$NON-NLS-1$
+			
+			String address = null; 
+			
+			if(custom.containsKey("house")) //$NON-NLS-1$
+				address = custom.get("house"); //$NON-NLS-1$
+			
+			if(custom.containsKey("city") && address != null) //$NON-NLS-1$
+				address = custom.get("city"); //$NON-NLS-1$
+			else if(custom.containsKey("city")) //$NON-NLS-1$
+				address += "\n" + custom.get("city"); //$NON-NLS-1$ //$NON-NLS-2$
+			
+			if(address != null)
+				addedInfo = true;
+			
+		}
 		
-		return c;
+		if(addedInfo)
+			update();
+			
 	}
 	
 	/**
-	 * Returns the record id of this contact in the contacts table
-	 * @return
+	 * Update a contact with the objects current information
 	 */
-	public int getID(){
-		
-		return id;
-		
-	}
-	
-	/**
-	 * Returns the "name" of this contact e.g. Fred Rogers
-	 * @return name or null if not set
-	 */
-	public String getName(){
-		
-		return name;
-		
-	}
-	
-	/**
-	 * Update a contact with the information given
-	 * @param id id of contact to update
-	 * @param contact information to update it to
-	 * @param mysql Read/Write Connection to DB
-	 */
-	private void updateContact(int id, Contact contact, Connection mysql) {
-		
+	private void update() {
+		//TODO
 		String SQL = "UPDATE `contacts` SET `updated` = ? "; //$NON-NLS-1$
 		
 		Contact existing = getContact(id, mysql);
@@ -606,6 +592,31 @@ public class Contact {
 		
 	}
 	
+	private void updateCustomFields() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	/**
+	 * Returns the record id of this contact in the contacts table
+	 * @return
+	 */
+	public int getID(){
+		
+		return id;
+		
+	}
+	
+	/**
+	 * Returns the "name" of this contact e.g. Fred Rogers
+	 * @return name or null if not set
+	 */
+	public String getName(){
+		
+		return name;
+		
+	}
+	
 	/**
 	 * Helper method to change db lookup of "null" to java null
 	 * @param check
@@ -621,7 +632,6 @@ public class Contact {
 	}
 	
 	private void populateCustomFields(){
-		//TODO close resultset on this and one of the other contact things
 		
 		String[] tables = {"contact_values_large", "contact_values_medium",  //$NON-NLS-1$ //$NON-NLS-2$
 				"contact_values_small"}; //$NON-NLS-1$
@@ -662,11 +672,23 @@ public class Contact {
 				
 			}finally{
 				
+				if(customResults != null){//Close results
+					try{
+						customResults.close();
+					}catch(Exception e){}
+					
+					customResults = null;
+					
+				}
+			
 				if(selectContact != null){//Close Statement
-		        	try{
+		        	
+					try{
 		        		selectContact.close();
-		        		selectContact = null;
 		        	}catch(Exception e){}
+		        	
+		        	selectContact = null;
+	        		
 		        }
 		    	
 			}
@@ -674,12 +696,5 @@ public class Contact {
 		}
 		
 	}
-	
-	private void updateCustomFields(Contact contact, Contact existing,
-			Connection mysql) {
-		// TODO Auto-generated method stub
-		
-	}
-
 	
 }
