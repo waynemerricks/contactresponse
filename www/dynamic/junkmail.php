@@ -1,12 +1,12 @@
 <?php
 
-  include('includes/session.php'); //Include SESSION stuff
-  include('includes/database.php'); //Include DB stuff
+  include('../includes/session.php'); //Include SESSION stuff
+  include('../includes/database.php'); //Include DB stuff
 
   $mysqli = getDatabaseRead(); //Get MySQL connection for page
 
-  include('includes/loggedIn.php'); //Include logged in check
-  include('includes/user.php'); //User functions
+  include('../includes/loggedIn.php'); //Include logged in check
+  include('../includes/user.php'); //User functions
 
   if(isset($_POST['contact'])){//TODO and session can junk contact
 
@@ -27,6 +27,6 @@
     echo 'SUCCESS';
 
   }else
-    header('Location: index.php');
+    header('Location: ../index.php');
 
 ?>
