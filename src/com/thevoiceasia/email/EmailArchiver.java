@@ -364,7 +364,7 @@ public class EmailArchiver extends Thread implements EmailReader {
 		
 		Contact contact = new Contact(database, from, name, sms);
 		
-		if(subject.endsWith("form submitted")) //$NON-NLS-1$
+		if(subject.trim().endsWith("form submitted")) //$NON-NLS-1$
 			contact.updateWithWebForm(body);
 			
 		int existingContactId = contact.getID();
