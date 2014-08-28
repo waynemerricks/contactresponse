@@ -9,17 +9,19 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.thevoiceasia.database.DatabaseHelper;
+import com.thevoiceasia.database.FieldMap;
 
 public class Contact {
 
-	private String name = null, email = null, gender = null, phoneNumber = null,
-			language = null, photo = null, status = null, autoReply = null;
-	private int id = -1, languageID = -1, assignedUser = -1;
-	private long created = -1, updated = -1;
+	private String name = null, email = null, gender = null, phoneNumber = null;//,
+			//language = null, photo = null, status = null, autoReply = null;
+	private int id = -1;//, languageID = -1, assignedUser = -1;
+	private long updated = -1;//, created = -1; 
 	private boolean sms = false;
 	private HashMap<String, String> custom = new HashMap<String, String>();
 	
@@ -27,6 +29,8 @@ public class Contact {
 
 	private static final Logger LOGGER = Logger.getLogger("com.thevoiceasia.contact.Contact"); //$NON-NLS-1$
 	private static final Level LEVEL = Level.INFO;//Logging level of this class
+	private static final String[] TABLES = {"contact_values_large",  //$NON-NLS-1$
+		"contact_values_medium", "contact_values_small"}; //$NON-NLS-1$ //$NON-NLS-2$
 	
 	/**
 	 * Creates a contact object with default values (no DB lookups)
@@ -93,6 +97,7 @@ public class Contact {
 		
 		if(!populate("WHERE `email` = ?", email)) //$NON-NLS-1$
 			createNewContact();
+		
 	}
 	
 	/**
@@ -147,10 +152,10 @@ public class Contact {
 					gender = contact.getString("gender"); //$NON-NLS-1$
 					
 					//Language ID
-					languageID = contact.getInt("language_id"); //$NON-NLS-1$
+					//languageID = contact.getInt("language_id"); //$NON-NLS-1$
 					
 					//Language
-					language = contact.getString("language"); //$NON-NLS-1$
+					//language = contact.getString("language"); //$NON-NLS-1$
 					
 					//Phone
 					if(checkNull(contact.getString("phone")) == null &&  //$NON-NLS-1$
@@ -167,23 +172,23 @@ public class Contact {
 						phoneNumber = contact.getString("phone"); //$NON-NLS-1$
 					
 					//Photo
-					photo = contact.getString("photo"); //$NON-NLS-1$
+					//photo = contact.getString("photo"); //$NON-NLS-1$
 					
 					//Assigned User
-					assignedUser = contact.getInt("assigned_user_id"); //$NON-NLS-1$
+					//assignedUser = contact.getInt("assigned_user_id"); //$NON-NLS-1$
 					
 					//Created
-					created = contact.getLong("created"); //$NON-NLS-1$
+					//created = contact.getLong("created"); //$NON-NLS-1$
 					
 					//Updated
 					if(updated != -1) //Set by updateName || Phone || Email
 						updated = contact.getLong("updated"); //$NON-NLS-1$
 					
 					//Status
-					status = contact.getString("status"); //$NON-NLS-1$
+					//status = contact.getString("status"); //$NON-NLS-1$
 					
 					//Auto Reply
-					autoReply = contact.getString("auto_reply"); //$NON-NLS-1$
+					//autoReply = contact.getString("auto_reply"); //$NON-NLS-1$
 					
 					//Flag existing success
 					populateCustomFields();
@@ -215,7 +220,6 @@ public class Contact {
 				try{
 					select.close();
 				}catch(Exception e){}
-				Contact c = new Contact();
 				
 				select = null;
 				
@@ -293,8 +297,8 @@ public class Contact {
 			if(updateContact != null){//Close Statement
             	try{
             		updateContact.close();
-            		updateContact = null;
             	}catch(Exception e){}
+            	updateContact = null;
             }
         	
 		}
@@ -375,15 +379,15 @@ public class Contact {
 			if(contactIDs != null){
             	try{
             		contactIDs.close();
-            		contactIDs = null;
             	}catch(Exception e){}
+            	contactIDs = null;
             }
             	
             if(insertContact != null){//Close Statement
             	try{
             		insertContact.close();
-            		insertContact = null;
             	}catch(Exception e){}
+           		insertContact = null;
             }
         	
 		}
@@ -633,8 +637,135 @@ public class Contact {
 	
 	}
 	
+	/**
+	 * Gets all the custom fields and their associated sizes (s, m l)
+	 * @return HashMap with label, size
+	 */
+	private HashMap<String, FieldMap> getCustomMappings(){
+		
+		HashMap<String, FieldMap> mappings = new HashMap<String, FieldMap>();
+		String SQL = "SELECT * FROM `contact_fields`"; //$NON-NLS-1$
+		
+		Statement selectFields = null;
+		ResultSet fields = null;
+		
+		try{
+			
+			selectFields = database.getConnection().createStatement();
+			selectFields.executeQuery(SQL);
+			fields = selectFields.getResultSet();
+			
+			while(fields.next())
+				mappings.put(fields.getString("label"), new FieldMap( //$NON-NLS-1$
+						fields.getInt("id"), fields.getString("label"),  //$NON-NLS-1$//$NON-NLS-2$
+						fields.getString("type"))); //$NON-NLS-1$
+				
+		}catch(SQLException e){
+			
+			e.printStackTrace();
+			LOGGER.severe("SQL Error while looking up custom fields map"); //$NON-NLS-1$
+			
+		}finally{
+			
+			if(fields != null){//Close Results
+	        	try{
+	        		fields.close();
+	        	}catch(Exception e){}
+	        	fields = null;
+	        }
+			
+			if(selectFields != null){//Close Statement
+	        	try{
+	        		selectFields.close();
+	        	}catch(Exception e){}
+	        	selectFields = null;
+	        }
+	    	
+		}
+		
+		return mappings;
+		
+	}
+	/**
+	 * Updates the custom fields stored in the hash map
+	 * call Update as it will only do this if necessary.
+	 * 
+	 * Or at least check if custom.size() > 0
+	 */
 	private void updateCustomFields() {
-		// TODO Auto-generated method stub
+		
+		//Setup SQL Inserts ON duplicate
+		String[] inserts = new String[3];
+		PreparedStatement[] cachedStatements = new PreparedStatement[3];
+		
+		for(int i = 0; i < inserts.length; i++)
+			inserts[i] = "INSERT INTO `" + TABLES[i] + "` (`owner_id`, `field_id`," + //$NON-NLS-1$ //$NON-NLS-2$
+				" `value`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `value` = ?"; //$NON-NLS-1$
+		
+		HashMap<String, FieldMap> maps = getCustomMappings();
+		Iterator<String> keys = custom.keySet().iterator();
+		
+		try{
+			
+			while(keys.hasNext()){
+				
+				String name = keys.next();
+				String value = custom.get(name);
+				int fieldID = maps.get(name).getID();
+				int table = -1;
+				
+				if(maps.get(name).getType().equals("s")) //$NON-NLS-1$
+					table = 2;
+				else if(maps.get(name).getType().equals("m")) //$NON-NLS-1$
+					table = 1;
+				else if(maps.get(name).getType().equals("l")) //$NON-NLS-1$
+					table = 0;
+				
+				if(cachedStatements[table] == null)
+					database.getConnection().prepareStatement(inserts[table]);
+					
+				updateCustomField(cachedStatements[table], fieldID, value);
+				
+			}
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Error while updatign custom field for "//$NON-NLS-1$ 
+					+ getIdentifierName()); 
+			e.printStackTrace();
+			
+		}finally{
+			
+			for(int i = 0; i < cachedStatements.length; i++){
+				
+				
+				if(cachedStatements[i] != null){
+					
+					try{
+						cachedStatements[i].close();
+					}catch(Exception e){}
+					
+					cachedStatements[i] = null;
+					
+				}
+				
+			}
+			
+		}
+		
+	}
+
+	private void updateCustomField(PreparedStatement insert,  int fieldID,
+			String value) throws SQLException {
+		
+		//Bind all variables to statement
+		insert.setInt(1, id);
+		insert.setInt(2, fieldID);
+		insert.setString(3, value);
+		insert.setString(4, value);
+		
+		//Execute it
+		insert.execute();
 		
 	}
 
@@ -677,18 +808,14 @@ public class Contact {
 	 */
 	private void populateCustomFields(){
 		
-		String[] tables = {"contact_values_large", "contact_values_medium",  //$NON-NLS-1$ //$NON-NLS-2$
-				"contact_values_small"}; //$NON-NLS-1$
-		
 		LOGGER.info("Getting custom for Contact: " + getIdentifierName()); //$NON-NLS-1$
 		
-		for (int i = 0; i < tables.length; i++){
+		for (int i = 0; i < TABLES.length; i++){
 			
-			String SQL = "SELECT `contact_fields`.`label`, `" + tables[i] +  //$NON-NLS-1$
-				"`.`value` FROM `contact_fields` INNER JOIN `" + tables[i] + //$NON-NLS-1$
-				"` ON `" + tables[i] + "`.`field_id` = `contact_fields`.`id` " + //$NON-NLS-1$ //$NON-NLS-2$
-				"WHERE `" + tables[i] + "`.`owner_id` = ?"; //$NON-NLS-1$ //$NON-NLS-2$
-			
+			String SQL = "SELECT `contact_fields`.`label`, `" + TABLES[i] +  //$NON-NLS-1$
+				"`.`value` FROM `contact_fields` INNER JOIN `" + TABLES[i] + //$NON-NLS-1$
+				"` ON `" + TABLES[i] + "`.`field_id` = `contact_fields`.`id` " + //$NON-NLS-1$ //$NON-NLS-2$
+				"WHERE `" + TABLES[i] + "`.`owner_id` = ?"; //$NON-NLS-1$ //$NON-NLS-2$
 			
 			PreparedStatement selectContact = null;
 			ResultSet customResults = null;
@@ -712,7 +839,7 @@ public class Contact {
 				e.printStackTrace();
 				LOGGER.severe("SQL Error while getting custom fields for " + //$NON-NLS-1$
 						"contact " + getIdentifierName() + " on table " + //$NON-NLS-1$ //$NON-NLS-2$
-						tables[i] + id); 
+						TABLES[i] + id); 
 				
 			}finally{
 				
