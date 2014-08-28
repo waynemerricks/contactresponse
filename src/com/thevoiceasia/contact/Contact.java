@@ -352,7 +352,7 @@ public class Contact {
 			insertContact = mysql.prepareStatement(SQL, Statement.RETURN_GENERATED_KEYS);
 			
 			for(int i = 1; i <= values.length; i++)
-				insertContact.setString(i, values[i]);
+				insertContact.setString(i, values[i - 1]);
 			
 			//Execute it
 			int rows = insertContact.executeUpdate();
@@ -599,13 +599,13 @@ public class Contact {
 			updateContact.setString(1, new SimpleDateFormat(
 					"yyyyMMddHHmmss").format(new Date())); //$NON-NLS-1$
 			
-			int nextIndex = 2;
+			int nextIndex = 1;
 			
-			while(nextIndex - 2 < values.size()){
+			while(nextIndex - 1 < values.size()){
 				
-				if(values.get(nextIndex - 2) instanceof String)
+				if(values.get(nextIndex - 1) instanceof String)
 					updateContact.setString(nextIndex, 
-							(String)values.get(nextIndex - 2));
+							(String)values.get(nextIndex - 1));
 			
 				nextIndex++;
 				
@@ -722,7 +722,8 @@ public class Contact {
 					table = 0;
 				
 				if(cachedStatements[table] == null)
-					database.getConnection().prepareStatement(inserts[table]);
+					cachedStatements[table] = database.getConnection()
+						.prepareStatement(inserts[table]);
 					
 				updateCustomField(cachedStatements[table], fieldID, value);
 				
@@ -796,7 +797,7 @@ public class Contact {
 	 */
 	private String checkNull(String check){
 	
-		if(check.equalsIgnoreCase("null") || check.trim().length() == 0) //$NON-NLS-1$
+		if(check == null || check.equalsIgnoreCase("null") || check.trim().length() == 0) //$NON-NLS-1$
 			check = null;
 		
 		return check;
@@ -808,7 +809,7 @@ public class Contact {
 	 */
 	private void populateCustomFields(){
 		
-		LOGGER.info("Getting custom for Contact: " + getIdentifierName()); //$NON-NLS-1$
+		LOGGER.finest("Getting custom for Contact: " + getIdentifierName()); //$NON-NLS-1$
 		
 		for (int i = 0; i < TABLES.length; i++){
 			
