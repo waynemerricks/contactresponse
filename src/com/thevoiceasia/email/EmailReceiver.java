@@ -51,7 +51,7 @@ public class EmailReceiver extends Thread{
 	public void run(){
 		
 		LOGGER.finest("Importer: Started on inbox " + MAIL_USER); //$NON-NLS-1$
-		receiveEmail(MAIL_SERVER, MAIL_USER, MAIL_PASSWORD, 50);
+		receiveEmail(MAIL_SERVER, MAIL_USER, MAIL_PASSWORD, 10);
 		LOGGER.finest("Importer: Finished reading Emails"); //$NON-NLS-1$
 		
 	}
@@ -183,10 +183,21 @@ public class EmailReceiver extends Thread{
 			int emailCount = emailFolder.getMessageCount();//number of messages in INBOX
 			LOGGER.finest("Importer: " + emailCount + " messages found"); //$NON-NLS-1$ //$NON-NLS-2$
 			
+			int totalEmails = -1;
+			
 			if(emailCount > 0){
 				
+				if(emailCount > number){//Read number at a time at most
+					totalEmails = emailCount;
+					emailCount = number;
+				}
+				
 				//Loop through emails adding to DB
-				LOGGER.info("Importer: Reading " + emailCount + " emails..."); //$NON-NLS-1$ //$NON-NLS-2$
+				if(totalEmails != -1)
+					LOGGER.info("Importer: Reading " + emailCount + " emails (" +  //$NON-NLS-1$ //$NON-NLS-2$
+							(totalEmails - number) + " remaining)"); //$NON-NLS-1$
+				else
+					LOGGER.info("Importer: Reading " + emailCount + " emails..."); //$NON-NLS-1$ //$NON-NLS-2$
 				
 				for(int i = emailCount; i > 0; i--){
 					
