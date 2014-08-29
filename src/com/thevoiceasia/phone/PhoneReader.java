@@ -1,5 +1,6 @@
 package com.thevoiceasia.phone;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -84,8 +85,47 @@ public class PhoneReader extends MessageArchiver {
 		
 	}
 
+	/** 
+	 * Get uesrs info from the users table
+	 */
 	private void populateUserIDs() {
-		// TODO Auto-generated method stub
+		
+		Statement selectUsers = null;
+		ResultSet results = null;
+		
+		try{
+			
+			selectUsers = database.getConnection().createStatement();
+			
+			if(selectUsers.execute("SELECT `id`, `name` FROM `users`")){ //$NON-NLS-1$
+				
+				results = selectUsers.getResultSet();
+				
+				while(results.next()){
+					
+					String name = results.getString("name"); //$NON-NLS-1$
+					
+					//Remove spaces from name and convert to lowercase so we can compare with answeredBy
+					name = name.replaceAll(" ", "").toLowerCase();  //$NON-NLS-1$//$NON-NLS-2$
+					
+					int id = results.getInt("id"); //$NON-NLS-1$
+					userIds.put(name, id);
+					
+				}
+				
+			} 
+			
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Phone Archiver: Error getting User IDs"); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(selectUsers, results);
+			
+		}
 		
 	}
 
@@ -260,8 +300,6 @@ public class PhoneReader extends MessageArchiver {
 				while(results.next())
 					id = processPhoneMessage(results);
 				
-				SQL = "UPDATE ";//TODO
-				
 			}
 			
 		}catch(SQLException e){
@@ -282,8 +320,34 @@ public class PhoneReader extends MessageArchiver {
 		
 	}
 	
+	/**
+	 * Updates lastPhoneID in the settings table
+	 * @param id value to update to
+	 */
 	private void updateLastProcessedID(int id) {
-		// TODO Auto-generated method stub
+		
+		PreparedStatement updateID = null;
+		
+		try{
+			
+			updateID = database.getConnection().prepareStatement(
+					"UPDATE `settings` SET `value` = ? WHERE `name` = ?"); //$NON-NLS-1$
+			
+			updateID.setInt(1, id);
+			updateID.setString(2, "lastPhoneID"); //$NON-NLS-1$
+			
+			updateID.execute();
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Phone Archiver: Error updating lastPhoneID - " + id); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(updateID, null);
+			
+		}
 		
 	}
 
