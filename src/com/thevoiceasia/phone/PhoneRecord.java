@@ -103,7 +103,9 @@ public class PhoneRecord {
 		 * 
 		 * Also add in 44 for numbers that are 11 long and start with 1 zero.
 		 */
-		if(key.equals("number")){ //$NON-NLS-1$
+		if(key.equals("number") && value.equalsIgnoreCase("unknown"))  //$NON-NLS-1$//$NON-NLS-2$
+			value = null;
+		else if(key.equals("number")){ //$NON-NLS-1$
 			
 			if(value.length() > 11 && value.startsWith("0")) //$NON-NLS-1$
 				while(value.startsWith("0")) //$NON-NLS-1$
