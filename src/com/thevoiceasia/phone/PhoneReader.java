@@ -443,7 +443,7 @@ public class PhoneReader extends MessageArchiver {
 				
 			}
 			
-			new Contact(pr);
+			new Contact(database, pr);
 			
 			lastID = results.getInt("id"); //$NON-NLS-1$
 			
