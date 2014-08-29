@@ -35,6 +35,18 @@ public class FieldMap {
 		return data;
 	}
 	
+	public int getDataId(String key){
+		
+		int index = -1;
+		
+		for(int i = 0; i < data.length; i++)
+			if(data[i].equalsIgnoreCase(key))
+				index = i;
+		
+		return index;
+		
+	}
+	
 	public String getData(int index){
 		
 		return data[index];
