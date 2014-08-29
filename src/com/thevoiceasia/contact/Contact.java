@@ -48,9 +48,25 @@ public class Contact {
 	 * Updates as necessary
 	 * @param phone
 	 */
-	public Contact(PhoneRecord phone){
+	public Contact(DatabaseHelper database, PhoneRecord phone){
 		
 		//TODO
+		LOGGER.setLevel(LEVEL);
+		
+		this.name = phone.getName();
+		this.phoneNumber = phone.getNumber();
+		this.database = database;
+		this.email = phone.email;
+		this.sms = false;
+		
+		/*if(email == null && phoneNumber == null)
+			createNewContact();
+		else if(email != null)
+			populateByEmail();
+		else if(phoneNumber != null)
+			populateByPhone();*/
+		
+		//TODO don't populate, treat like updateWithWebForm
 		
 	}
 	
@@ -217,25 +233,7 @@ public class Contact {
 			
 		}finally{
 			
-			if(contact != null){
-				
-				try{
-					contact.close();
-				}catch(Exception e){}
-				
-				contact = null;
-				
-			}
-			
-			if(select != null){
-				
-				try{
-					select.close();
-				}catch(Exception e){}
-				
-				select = null;
-				
-			}
+			close(select, contact);
 			
 		}
 		
@@ -306,13 +304,8 @@ public class Contact {
 			
 		}finally{
 			
-			if(updateContact != null){//Close Statement
-            	try{
-            		updateContact.close();
-            	}catch(Exception e){}
-            	updateContact = null;
-            }
-        	
+			close(updateContact, null);
+			
 		}
 		
 		return success;
@@ -388,20 +381,8 @@ public class Contact {
 			
 		}finally{
 			
-			if(contactIDs != null){
-            	try{
-            		contactIDs.close();
-            	}catch(Exception e){}
-            	contactIDs = null;
-            }
-            	
-            if(insertContact != null){//Close Statement
-            	try{
-            		insertContact.close();
-            	}catch(Exception e){}
-           		insertContact = null;
-            }
-        	
+			close(insertContact, contactIDs);
+			
 		}
 		
 		return inserted;
@@ -638,12 +619,7 @@ public class Contact {
 			
 		}finally{
 			
-			if(updateContact != null){//Close Statement
-	        	try{
-	        		updateContact.close();
-	        		updateContact = null;
-	        	}catch(Exception e){}
-	        }
+			close(updateContact, null);
 	    	
 		}
 	
@@ -679,19 +655,7 @@ public class Contact {
 			
 		}finally{
 			
-			if(fields != null){//Close Results
-	        	try{
-	        		fields.close();
-	        	}catch(Exception e){}
-	        	fields = null;
-	        }
-			
-			if(selectFields != null){//Close Statement
-	        	try{
-	        		selectFields.close();
-	        	}catch(Exception e){}
-	        	selectFields = null;
-	        }
+			close(selectFields, fields);
 	    	
 		}
 		
@@ -751,16 +715,8 @@ public class Contact {
 			
 			for(int i = 0; i < cachedStatements.length; i++){
 				
-				
-				if(cachedStatements[i] != null){
-					
-					try{
-						cachedStatements[i].close();
-					}catch(Exception e){}
-					
-					cachedStatements[i] = null;
-					
-				}
+				if(cachedStatements[i] != null)
+					close(cachedStatements[i], null);
 				
 			}
 			
@@ -856,26 +812,38 @@ public class Contact {
 				
 			}finally{
 				
-				if(customResults != null){//Close results
-					try{
-						customResults.close();
-					}catch(Exception e){}
-					
-					customResults = null;
-					
-				}
-			
-				if(selectContact != null){//Close Statement
-		        	
-					try{
-		        		selectContact.close();
-		        	}catch(Exception e){}
-		        	
-		        	selectContact = null;
-	        		
-		        }
-		    	
+				close(selectContact, customResults);
+				
 			}
+			
+		}
+		
+	}
+	
+	/**
+	 * Helper method to close statements and resultsets
+	 * @param statement
+	 * @param results
+	 */
+	private void close(Statement statement, ResultSet results){
+		
+		if(results != null){
+			
+			try{
+				results.close();
+			}catch(Exception e){}
+			
+			results = null;
+			
+		}
+
+		if(statement != null){
+			
+			try{
+				statement.close();
+			}catch(Exception e){}
+			
+			statement = null;
 			
 		}
 		
