@@ -15,6 +15,7 @@ import java.util.logging.Logger;
 
 import com.thevoiceasia.database.DatabaseHelper;
 import com.thevoiceasia.database.FieldMap;
+import com.thevoiceasia.phone.PhoneRecord;
 
 public class Contact {
 
@@ -39,6 +40,17 @@ public class Contact {
 	
 		//All set at instantiation to null or -1
 		LOGGER.setLevel(LEVEL);
+		
+	}
+	
+	/**
+	 * Creates this object based on a phone record
+	 * Updates as necessary
+	 * @param phone
+	 */
+	public Contact(PhoneRecord phone){
+		
+		//TODO
 		
 	}
 	
