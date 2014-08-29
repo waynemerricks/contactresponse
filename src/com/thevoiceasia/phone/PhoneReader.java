@@ -14,6 +14,7 @@ public class PhoneReader extends MessageArchiver {
 
 	private DatabaseHelper phoneDatabase = null;
 	private HashMap<String, Integer> userIds = new HashMap<String, Integer>();
+	private HashMap<String, Integer> languageIds = new HashMap<String, Integer>();
 	
 	public PhoneReader(String host, String user, String pass, String dbase,
 			String phoneHost, String phoneUser, String phonePass, String phoneDbase,
@@ -272,29 +273,35 @@ public class PhoneReader extends MessageArchiver {
 			}
 			
 			//Answered By 1234 (1234) (user@pc)
-			String answered = results.getString("answeredBy"); //$NON-NLS-1$
+			String key = results.getString("answeredBy"); //$NON-NLS-1$
 			
-			int index = answered.indexOf("@"); //$NON-NLS-1$
+			int index = key.indexOf("@"); //$NON-NLS-1$
 			
 			if(index != -1){
 			
-				answered = answered.substring(index);
+				key = key.substring(index);
 				
-				index = answered.indexOf("("); //$NON-NLS-1$
+				index = key.indexOf("("); //$NON-NLS-1$
 				
 				while(index != -1){
 					
-					answered = answered.substring(index);
-					index = answered.indexOf("("); //$NON-NLS-1$
+					key = key.substring(index);
+					index = key.indexOf("("); //$NON-NLS-1$
 					
 				}
 				
 			}
 			
-			if(userIds.containsKey(answered))
-				pr.answeredBy = userIds.get(answered);
+			if(userIds.containsKey(key))
+				pr.answeredBy = userIds.get(key);
 			else
 				pr.answeredBy = -1;
+			
+			key = checkNull(results.getString("language").toLowerCase().trim()); //$NON-NLS-1$
+			
+			if(languageIds.containsKey(key))
+				pr.language = languageIds.get(key);
+			
 			//TODO other fields
 		}catch(SQLException e){
 			
