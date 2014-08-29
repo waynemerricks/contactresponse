@@ -9,14 +9,15 @@ import org.apache.commons.validator.routines.EmailValidator;
 
 import com.thevoiceasia.contact.Contact;
 import com.thevoiceasia.database.DatabaseHelper;
+import com.thevoiceasia.database.FieldMap;
 import com.thevoiceasia.messages.MessageArchiver;
 
 public class PhoneReader extends MessageArchiver {
 
 	private DatabaseHelper phoneDatabase = null;
 	private HashMap<String, Integer> userIds = new HashMap<String, Integer>();
-	private HashMap<String, HashMap<String, Integer>> customIds = 
-			new HashMap<String, HashMap<String,Integer>>();
+	private HashMap<String, FieldMap> customIds = 
+			new HashMap<String, FieldMap>();
 	private static final String[] CUSTOM_FIELDS = {"language", "religion",  //$NON-NLS-1$ //$NON-NLS-2$
 		"journeyStage", "topic"}; //$NON-NLS-1$ //$NON-NLS-2$
 	private static final String[] STRING_FIELDS = {"caller_name", "number",   //$NON-NLS-1$//$NON-NLS-2$
@@ -57,7 +58,14 @@ public class PhoneReader extends MessageArchiver {
 			
 				while(results.next()){
 				
-					//TODO
+					FieldMap map = new FieldMap(
+							results.getInt("id"), //$NON-NLS-1$
+							results.getString("label"), //$NON-NLS-1$
+							results.getString("type"), //$NON-NLS-1$
+							results.getString("data"), //$NON-NLS-1$
+							results.getString("map")); //$NON-NLS-1$
+					
+					customIds.put(results.getString("map"), map); //$NON-NLS-1$
 				
 				}
 				
@@ -250,7 +258,9 @@ public class PhoneReader extends MessageArchiver {
 				results = selectPhones.getResultSet();
 				
 				while(results.next())
-					processPhoneMessage(results);
+					id = processPhoneMessage(results);
+				
+				SQL = "UPDATE ";//TODO
 				
 			}
 			
@@ -286,16 +296,15 @@ public class PhoneReader extends MessageArchiver {
 	/**
 	 * Process the messages
 	 * @param results
+	 * @return id of record we processed
 	 */
-	private void processPhoneMessage(ResultSet results) {
+	private int processPhoneMessage(ResultSet results) {
 		
 		int lastID = -1;
 		
 		try{
 			
 			PhoneRecord pr = new PhoneRecord();
-			
-			lastID = results.getInt("id"); //$NON-NLS-1$
 			
 			pr.setAddress(results.getString("address"),  //$NON-NLS-1$
 					results.getString("postcode")); //$NON-NLS-1$
@@ -351,11 +360,12 @@ public class PhoneReader extends MessageArchiver {
 				key = checkNull(results.getString(CUSTOM_FIELDS[i])
 						.toLowerCase().trim());
 				
-				if(customIds.containsKey(CUSTOM_FIELDS[i]) &&
-						customIds.get(CUSTOM_FIELDS[i]).containsKey(key)){
+				if(customIds.containsKey(CUSTOM_FIELDS[i])){
+				
+					int dataId = customIds.get(CUSTOM_FIELDS[i]).getDataId(key);
 					
-					pr.setCustomField(CUSTOM_FIELDS[i], 
-							customIds.get(CUSTOM_FIELDS[i]).get(key));
+					if(dataId != -1)
+						pr.setCustomField(CUSTOM_FIELDS[i], dataId);
 					
 				}
 				
@@ -363,6 +373,7 @@ public class PhoneReader extends MessageArchiver {
 			
 			new Contact(pr);
 			
+			lastID = results.getInt("id"); //$NON-NLS-1$
 			
 		}catch(SQLException e){
 			
@@ -370,6 +381,8 @@ public class PhoneReader extends MessageArchiver {
 			e.printStackTrace();
 			
 		}
+		
+		return lastID;
 		
 	}
 	
