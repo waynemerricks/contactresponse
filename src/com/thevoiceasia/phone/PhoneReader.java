@@ -8,7 +8,7 @@ import java.util.HashMap;
 
 import org.apache.commons.validator.routines.EmailValidator;
 
-import com.thevoiceasia.contact.Contact;
+import com.thevoiceasia.contact.PhoneContact;
 import com.thevoiceasia.database.DatabaseHelper;
 import com.thevoiceasia.database.FieldMap;
 import com.thevoiceasia.messages.MessageArchiver;
@@ -447,7 +447,7 @@ public class PhoneReader extends MessageArchiver {
 				
 			}
 			
-			new Contact(database, pr);
+			new PhoneContact(database, pr);
 			
 			lastID = results.getInt("id"); //$NON-NLS-1$
 			

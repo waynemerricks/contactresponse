@@ -44,33 +44,6 @@ public class Contact {
 	}
 	
 	/**
-	 * Creates this object based on a phone record
-	 * Updates as necessary
-	 * @param phone
-	 */
-	public Contact(DatabaseHelper database, PhoneRecord phone){
-		
-		//TODO
-		LOGGER.setLevel(LEVEL);
-		
-		this.name = phone.getName();
-		this.phoneNumber = phone.getNumber();
-		this.database = database;
-		this.email = phone.email;
-		this.sms = false;
-		
-		/*if(email == null && phoneNumber == null)
-			createNewContact();
-		else if(email != null)
-			populateByEmail();
-		else if(phoneNumber != null)
-			populateByPhone();*/
-		
-		//TODO don't populate, treat like updateWithWebForm
-		
-	}
-	
-	/**
 	 * Creates a Contact and populates with info from the database 
 	 * @param database
 	 * @param email Email/SMS Email coming in
