@@ -241,7 +241,7 @@ public class PhoneReader extends MessageArchiver {
 	public void getMessages() {
 		
 		int id = getLastReadID();
-		
+		int lastId = id;
 		phoneDatabase.connect();
 		
 		Statement selectPhones = null;
@@ -273,12 +273,20 @@ public class PhoneReader extends MessageArchiver {
 			
 			close(selectPhones, results);
 			
+			if(id != -1 && lastId != id)
+				updateLastProcessedID(id);
+			
 		}
 		
 		phoneDatabase.disconnect();
 		
 	}
 	
+	private void updateLastProcessedID(int id) {
+		// TODO Auto-generated method stub
+		
+	}
+
 	/**
 	 * Helper method to change db lookup of "null" to java null
 	 * @param check
