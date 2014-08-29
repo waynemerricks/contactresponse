@@ -379,6 +379,12 @@ public class EmailArchiver extends Thread implements EmailReader {
 		String SQL = "INSERT INTO `messages` (`owner`, `type`, `direction`, " + //$NON-NLS-1$
 				"`preview`) VALUES (?, ?, ?, ?)"; //$NON-NLS-1$
 		
+		int assignedUserID = getAssignedUserID(to);
+		
+		if(assignedUserID != -1)
+			SQL = "INSERT INTO `messages` (`owner`, `type`, `direction`, " + //$NON-NLS-1$
+					"`preview`, `assigned_user_id`) VALUES (?, ?, ?, ?, ?)"; //$NON-NLS-1$
+		
 		Connection mysql = database.getConnection();
 		PreparedStatement insertMessage = null;
 		ResultSet insertIDs = null;
@@ -392,6 +398,9 @@ public class EmailArchiver extends Thread implements EmailReader {
 			insertMessage.setString(2, type);
 			insertMessage.setString(3, "I"); //$NON-NLS-1$
 			insertMessage.setString(4, preview);
+			
+			if(assignedUserID != -1)
+				insertMessage.setInt(5, assignedUserID);
 			
 			//Execute it
 			int rows = insertMessage.executeUpdate();
@@ -449,6 +458,23 @@ public class EmailArchiver extends Thread implements EmailReader {
 		}
 		
 		return success;
+		
+	}
+
+	/**
+	 * Uses the to address to figure out who we should assign this message
+	 * @param to email address that this message was sent to
+	 * @return -1 = use normal NULL value, else use the id to assign
+	 */
+	private int getAssignedUserID(String to) {
+		
+		/* TODO Use the to address to decide if this should be assigned
+		 * to another user or a show
+		 * 
+		 * Create table for to address ==> user
+		 */
+		
+		return -1;
 		
 	}
 
