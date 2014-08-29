@@ -275,6 +275,7 @@ public class PhoneReader extends MessageArchiver {
 		}
 		
 	}
+	
 	/**
 	 * Get Messages from the phone database
 	 */
