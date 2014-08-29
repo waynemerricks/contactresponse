@@ -16,6 +16,9 @@ public class PhoneRecord {
 	 */
 	public void setAddress(String address, String postcode){
 		
+		address = checkNull(address);
+		postcode = checkNull(postcode);
+		
 		if(address == null && postcode != null)
 			this.address = postcode;
 		else if(address != null && postcode == null)
@@ -28,6 +31,20 @@ public class PhoneRecord {
 	public String getAddress(){
 		
 		return address;
+		
+	}
+	
+	/**
+	 * Helper method to change db lookup of "null" to java null
+	 * @param check
+	 * @return
+	 */
+	private String checkNull(String check){
+	
+		if(check == null || check.equalsIgnoreCase("null") || check.trim().length() == 0) //$NON-NLS-1$
+			check = null;
+		
+		return check;
 		
 	}
 	
