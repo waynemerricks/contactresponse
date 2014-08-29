@@ -393,6 +393,9 @@ public class PhoneReader extends MessageArchiver {
 				
 			}
 			
+			pr.gender = results.getString("gender").substring(0, 1) //$NON-NLS-1$
+					.toUpperCase();
+			
 			//Answered By 1234 (1234) (user@pc)
 			String key = results.getString("answeredBy"); //$NON-NLS-1$
 			
