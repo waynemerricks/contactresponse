@@ -3,6 +3,9 @@ package com.thevoiceasia.phone;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashMap;
+
+import org.apache.commons.validator.routines.EmailValidator;
 
 import com.thevoiceasia.database.DatabaseHelper;
 import com.thevoiceasia.messages.MessageArchiver;
@@ -10,6 +13,7 @@ import com.thevoiceasia.messages.MessageArchiver;
 public class PhoneReader extends MessageArchiver {
 
 	private DatabaseHelper phoneDatabase = null;
+	private HashMap<String, Integer> userIds = new HashMap<String, Integer>();
 	
 	public PhoneReader(String host, String user, String pass, String dbase,
 			String phoneHost, String phoneUser, String phonePass, String phoneDbase,
@@ -20,8 +24,15 @@ public class PhoneReader extends MessageArchiver {
 		phoneDatabase = new DatabaseHelper(phoneHost, phoneDbase, phoneUser, 
 				phonePass);
 		
+		populateUserIDs();
+		
 	}
 	
+	private void populateUserIDs() {
+		// TODO Auto-generated method stub
+		
+	}
+
 	/**
 	 * Connects to Phone database
 	 */
@@ -216,6 +227,20 @@ public class PhoneReader extends MessageArchiver {
 		phoneDatabase.disconnect();
 		
 	}
+	
+	/**
+	 * Helper method to change db lookup of "null" to java null
+	 * @param check
+	 * @return
+	 */
+	private String checkNull(String check){
+	
+		if(check == null || check.equalsIgnoreCase("null") || check.trim().length() == 0) //$NON-NLS-1$
+			check = null;
+		
+		return check;
+		
+	}
 
 	/**
 	 * Process the messages
@@ -226,10 +251,51 @@ public class PhoneReader extends MessageArchiver {
 		int lastID = -1;
 		
 		try{
-		
-			lastID = results.getInt("id"); //$NON-NLS-1$
+			
 			PhoneRecord pr = new PhoneRecord();
 			
+			lastID = results.getInt("id"); //$NON-NLS-1$
+			
+			pr.name = checkNull(results.getString("caller_name")); //$NON-NLS-1$
+			pr.setAddress(results.getString("address"),  //$NON-NLS-1$
+					results.getString("postcode")); //$NON-NLS-1$
+			
+			String email = checkNull(results.getString("email")); //$NON-NLS-1$
+			
+			if(email != null){
+				
+				EmailValidator ev = EmailValidator.getInstance(false);
+				
+				if(ev.isValid(email))
+					pr.email = email;
+				
+			}
+			
+			//Answered By 1234 (1234) (user@pc)
+			String answered = results.getString("answeredBy"); //$NON-NLS-1$
+			
+			int index = answered.indexOf("@"); //$NON-NLS-1$
+			
+			if(index != -1){
+			
+				answered = answered.substring(index);
+				
+				index = answered.indexOf("("); //$NON-NLS-1$
+				
+				while(index != -1){
+					
+					answered = answered.substring(index);
+					index = answered.indexOf("("); //$NON-NLS-1$
+					
+				}
+				
+			}
+			
+			if(userIds.containsKey(answered))
+				pr.answeredBy = userIds.get(answered);
+			else
+				pr.answeredBy = -1;
+			//TODO other fields
 		}catch(SQLException e){
 			
 			LOGGER.severe("Phone Archiver: Error getting record information" + lastID); //$NON-NLS-1$
