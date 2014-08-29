@@ -32,6 +32,12 @@ public class PhoneRecord {
 		
 	}
 	
+	public String getNumber(){
+		
+		return stringFields.get("number"); //$NON-NLS-1$
+		
+	}
+	
 	public String getAddress(){
 		
 		return address;
@@ -109,6 +115,16 @@ public class PhoneRecord {
 		}
 		
 		stringFields.put(key, value);
+		
+	}
+	
+	/**
+	 * Returns the caller_name from this object
+	 * @return
+	 */
+	public String getName(){
+		
+		return stringFields.get("caller_name"); //$NON-NLS-1$
 		
 	}
 	
