@@ -334,7 +334,7 @@ public class PhoneReader extends MessageArchiver {
 				
 				results = selectPhones.getResultSet();
 				
-				LOGGER.info("Phone Archiver: Got Phone Messages"); //$NON-NLS-1$
+				LOGGER.finer("Phone Archiver: Got Phone Messages"); //$NON-NLS-1$
 				
 				while(results.next())
 					id = processPhoneMessage(results);
