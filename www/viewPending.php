@@ -184,13 +184,13 @@
         <li><a href="#">Manual Reply</a>
           <ul class="dropup">
             <?php if($contact->hasEmail()){ ?>
-              <li><a href="mailto:<?php echo $_GET['id']; ?>@crs.internal?subject=Type%20Your%20Subject%20Here&body=Type%20Your%20Message%20here" onclick="return manualReply('E', '<?php echo $_GET['id']; ?>', '<?php echo $lastMessageID; ?>')">Email</a></li>
+              <li><a href="mailto:<?php echo $lastMessageID; ?>e<?php echo getLoggedInUserID(); ?>@crs.internal?subject=Type%20Your%20Subject%20Here&body=Type%20Your%20Message%20here" onclick="return manualReply('E', '<?php echo $_GET['id']; ?>', '<?php echo $lastMessageID; ?>')">Email</a></li>
             <?php } ?>
             <?php if($contact->hasPhoneNumber()){ ?>
-              <li><a href="mailto:<?php echo $_GET['id']; ?>@crs.internal?subject=Subject%20Will%20Be%20Ignored&body=Type%20Your%20SMS%20here" onclick="return manualReply('S', '<?php echo $_GET['id']; ?>', '<?php echo $lastMessageID; ?>')">SMS</a></li>
+              <li><a href="mailto:<?php echo $lastMessageID; ?>s<?php echo getLoggedInUserID(); ?>@crs.internal?subject=Subject%20Will%20Be%20Ignored&body=Type%20Your%20SMS%20here" onclick="return manualReply('S', '<?php echo $_GET['id']; ?>', '<?php echo $lastMessageID; ?>')">SMS</a></li>
             <?php } ?>
             <?php if($contact->hasPostalAddress()){ ?>
-              <li><a href="mailto:<?php echo $_GET['id']; ?>@crs.internal?subject=Subject%20Will%20Be%20Ignored&body=Type%20Your%20Letter%20here" onclick="return manualReply('L', '<?php echo $_GET['id']; ?>', '<?php echo $lastMessageID; ?>')">Letter</a></li>
+              <li><a href="mailto:<?php echo $lastMessageID; ?>l<?php echo getLoggedInUserID(); ?>@crs.internal?subject=Subject%20Will%20Be%20Ignored&body=Type%20Your%20Letter%20here" onclick="return manualReply('L', '<?php echo $_GET['id']; ?>', '<?php echo $lastMessageID; ?>')">Letter</a></li>
             <?php } ?>
           </ul>
         </li>
