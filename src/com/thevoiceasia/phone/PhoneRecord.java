@@ -1,6 +1,9 @@
 package com.thevoiceasia.phone;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+
+import com.thevoiceasia.database.KeyValue;
 
 public class PhoneRecord {
 	
@@ -12,6 +15,31 @@ public class PhoneRecord {
 	
 	private HashMap<String, String> stringFields = new HashMap<String, String>();
 	private HashMap<String, Integer> customIDs = new HashMap<String, Integer>();
+	
+	/**
+	 * Returns a KeyValue list of non-null values for the contacts table
+	 * @return
+	 */
+	public ArrayList<KeyValue> getNonNullValues(){
+	
+		ArrayList<KeyValue> pairs = new ArrayList<KeyValue>();
+		
+		if(getName() != null)
+			pairs.add(new KeyValue("name", getName())); //$NON-NLS-1$
+		
+		if(email != null)
+			pairs.add(new KeyValue("email", email)); //$NON-NLS-1$
+			
+		if(getNumber() != null)
+			pairs.add(new KeyValue("phone", getNumber())); //$NON-NLS-1$
+		
+		if(gender != null)
+			pairs.add(new KeyValue("gender", gender)); //$NON-NLS-1$
+		
+		return pairs;
+		
+	}
+	
 	
 	/**
 	 * Sets the address of this object by combining address + postcode
