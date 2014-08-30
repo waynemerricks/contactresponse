@@ -2,6 +2,7 @@ package com.thevoiceasia.phone;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 
 import com.thevoiceasia.database.KeyValue;
 
@@ -40,6 +41,31 @@ public class PhoneRecord {
 		
 	}
 	
+	/**
+	 * Gets the custom values related to the contact
+	 * @return
+	 */
+	public ArrayList<KeyValue> getCustomValues(){
+		
+		//These will never be null like normal values so can just reel them off
+		ArrayList<KeyValue> pairs = new ArrayList<KeyValue>();
+		
+		Iterator<String> keys = customIDs.keySet().iterator();
+		
+		while(keys.hasNext()){
+			
+			String key = keys.next();
+			pairs.add(new KeyValue(key, "" + customIDs.get(key))); //$NON-NLS-1$
+			
+		}
+		
+		//Add in the address too
+		if(address != null)
+			pairs.add(new KeyValue("address", address)); //$NON-NLS-1$
+		
+		return pairs;
+		
+	}
 	
 	/**
 	 * Sets the address of this object by combining address + postcode
