@@ -19,7 +19,8 @@ public class FieldMap {
 		this.id = id;
 		this.label = label;
 		this.type = type;
-		this.data = data.split(","); //$NON-NLS-1$
+		if(data != null)
+			this.data = data.split(","); //$NON-NLS-1$
 		this.map = map;
 		
 	}
