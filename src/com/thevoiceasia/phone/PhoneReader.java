@@ -4,7 +4,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 
 import org.apache.commons.validator.routines.EmailValidator;
@@ -506,14 +508,15 @@ public class PhoneReader extends MessageArchiver {
 		
 		//Update Contact Table
 		ArrayList<KeyValue> values = pr.getNonNullValues();
+		SimpleDateFormat mysqlTime = new SimpleDateFormat("yyyyMMddHHmmss");//$NON-NLS-1$
 		
-		if(values.size() > 0){
+		if(values.size() > 0){  
 			
-			String SQL = "UPDATE `contacts` SET `" + values.get(0).key + "` = ?";  //$NON-NLS-1$//$NON-NLS-2$
+			String SQL = "UPDATE `contacts` SET `updated` = ?";  //$NON-NLS-1$
 			
-			if(values.size() > 1)
-				for(int i = 1; i < values.size(); i++)
-					SQL += ", `" + values.get(i).key + " = ?";  //$NON-NLS-1$//$NON-NLS-2$
+			if(values.size() > 0)
+				for(int i = 0; i < values.size(); i++)
+					SQL += ", `" + values.get(i).key + "` = ?";  //$NON-NLS-1$//$NON-NLS-2$
 			
 			SQL += " WHERE `id` = ?"; //$NON-NLS-1$
 			
@@ -522,11 +525,12 @@ public class PhoneReader extends MessageArchiver {
 			try{
 				
 				updateContact = database.getConnection().prepareStatement(SQL);
+				updateContact.setString(1, mysqlTime.format(new Date()));
 				
-				for(int i = 1; i <= values.size(); i++)
-					updateContact.setString(i, values.get(i - 1).value);
+				for(int i = 2; i <= values.size() + 1; i++)
+					updateContact.setString(i, values.get(i - 2).value);
 				
-				updateContact.setInt(values.size() + 1, id);
+				updateContact.setInt(values.size() + 2, id);
 				
 				if(updateContact.execute())
 					success = updateCustomFields(id, pr);
@@ -605,13 +609,80 @@ public class PhoneReader extends MessageArchiver {
 		
 	}
 
-	private void createNewContact(PhoneRecord pr) {
-		// TODO Auto-generated method stub
+	/**
+	 * Creates a new contact in the contacts table and adds any custom fields
+	 * into the contact_values tables
+	 * @param pr Phone record to work on
+	 * @return true if successful
+	 */
+	private boolean createNewContact(PhoneRecord pr) {
+		
+		boolean success = false;
 		ArrayList<KeyValue> values = pr.getNonNullValues();
 				
-		String SQL = "INSERT INTO `contacts`";//TODO pretty much the same as update
 		//but retain new id
 		//Custom fields use update as it will INSERT on DUP update
+		if(values.size() > 0){
+			
+			String SQL = "INSERT INTO `contacts` (`" + values.get(0).key + "`";  //$NON-NLS-1$//$NON-NLS-2$
+			String placeHolders = "?"; //$NON-NLS-1$
+			
+			if(values.size() > 1)
+				for(int i = 1; i < values.size(); i++){
+					
+					SQL += ", `" + values.get(i).key + "`";  //$NON-NLS-1$//$NON-NLS-2$
+					placeHolders += ", ?"; //$NON-NLS-1$
+					
+				}
+			
+			SQL += ") VALUES (" + placeHolders + ")"; //$NON-NLS-1$ //$NON-NLS-2$
+			
+			PreparedStatement insertContact = null;
+			ResultSet results = null;
+			
+			try{
+				
+				insertContact = database.getConnection().prepareStatement(SQL, 
+						Statement.RETURN_GENERATED_KEYS);
+				
+				for(int i = 0; i <= values.size(); i++)
+					insertContact.setString(i, values.get(i).value);
+				
+				if(insertContact.execute()){
+					
+					results = insertContact.getGeneratedKeys();
+					
+					int id = -1;
+					
+					while(results.next())
+						id = results.getInt(0);
+					
+					if(id != -1)
+						success = updateCustomFields(id, pr);
+					
+				}
+				
+			}catch(SQLException e){
+				
+				LOGGER.severe("Phone Archiver: Error while inserting new " + //$NON-NLS-1$
+						"contact" + pr.getName()); //$NON-NLS-1$
+				e.printStackTrace();
+				
+			}finally{
+				
+				close(insertContact, results);
+				
+			}
+			
+		}else{
+			
+			success = true;
+			LOGGER.info("Phone Archiver: Nothing to isnert for " + pr.getName()); //$NON-NLS-1$
+			
+		}
+		
+		return success;
+
 	}
 
 	/**
