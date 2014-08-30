@@ -39,6 +39,8 @@ public class PhoneReader extends MessageArchiver {
 		phoneDatabase = new DatabaseHelper(phoneHost, phoneDbase, phoneUser, 
 				phonePass);
 		
+		database.connect();
+		
 		populateUserIDs();
 		populateCustomIDs();
 		
@@ -73,9 +75,9 @@ public class PhoneReader extends MessageArchiver {
 							results.getString("label"), //$NON-NLS-1$
 							results.getString("type"), //$NON-NLS-1$
 							results.getString("data"), //$NON-NLS-1$
-							results.getString("map")); //$NON-NLS-1$
+							results.getString("dbMap")); //$NON-NLS-1$
 					
-					customIds.put(results.getString("map"), map); //$NON-NLS-1$
+					customIds.put(results.getString("dbMap"), map); //$NON-NLS-1$
 				
 				}
 				
@@ -181,7 +183,6 @@ public class PhoneReader extends MessageArchiver {
 				
 				try {
 					
-					archiver.connectToDB();
 					archiver.getMessages();
 					archiver.disconnectFromDB();
 					
@@ -204,7 +205,7 @@ public class PhoneReader extends MessageArchiver {
 			
 		}else{
 			
-			System.out.println("USAGE: DBHOST DBUSER DBPASS DBASE MAILHOST MAILUSER MAILPASS MAILDB MESSAGESTOREPATH"); //$NON-NLS-1$
+			System.out.println("USAGE: B_HOST DB_USER DB_PASS DBASE PHONE_HOST PHONE_USER PHONE_PASS PHONE_DBASE MESSAGE_STORE_PATH"); //$NON-NLS-1$
 			System.exit(1);
 			
 		}
@@ -290,9 +291,10 @@ public class PhoneReader extends MessageArchiver {
 	 */
 	public void getMessages() {
 		
+		phoneDatabase.connect();
+		
 		int id = getLastReadID();
 		int lastId = id;
-		phoneDatabase.connect();
 		
 		Statement selectPhones = null;
 		ResultSet results = null;
@@ -412,13 +414,13 @@ public class PhoneReader extends MessageArchiver {
 			
 			if(index != -1){
 			
-				key = key.substring(index);
+				key = key.substring(0, index);
 				
 				index = key.indexOf("("); //$NON-NLS-1$
 				
 				while(index != -1){
 					
-					key = key.substring(index);
+					key = key.substring(index + 1);
 					index = key.indexOf("("); //$NON-NLS-1$
 					
 				}
@@ -532,7 +534,11 @@ public class PhoneReader extends MessageArchiver {
 				
 				updateContact.setInt(values.size() + 2, id);
 				
-				if(updateContact.execute())
+				updateContact.execute();
+				
+				int rowsUpdated = updateContact.getUpdateCount();
+				
+				if(rowsUpdated != -1 && rowsUpdated > 0)
 					success = updateCustomFields(id, pr);
 				
 			}catch(SQLException e){
@@ -581,6 +587,13 @@ public class PhoneReader extends MessageArchiver {
 			
 			PreparedStatement updateCustom = null;
 			
+			/* TODO We have a choice, create three statements for each table and 
+			 * reuse for the entire loop
+			 * or create a statement and destroy it for each loop
+			 * 
+			 * Probably should create three from a performance point of view
+			 * Will test and see how it goes 
+			 */
 			try{
 				
 				updateCustom = database.getConnection().prepareStatement(SQL);
@@ -590,6 +603,15 @@ public class PhoneReader extends MessageArchiver {
 				updateCustom.setInt(4, id);
 				
 				success = updateCustom.execute();
+				
+				if(!success){//Check for updated rows, only get true if there was a result set
+					
+					int rowCount = updateCustom.getUpdateCount();
+					
+					if(rowCount != -1 && rowCount > 0)
+						success = true;
+					
+				}
 				
 			}catch(SQLException e){
 				
@@ -645,8 +667,8 @@ public class PhoneReader extends MessageArchiver {
 				insertContact = database.getConnection().prepareStatement(SQL, 
 						Statement.RETURN_GENERATED_KEYS);
 				
-				for(int i = 0; i <= values.size(); i++)
-					insertContact.setString(i, values.get(i).value);
+				for(int i = 1; i <= values.size(); i++)
+					insertContact.setString(i, values.get(i - 1).value);
 				
 				if(insertContact.execute()){
 					
@@ -665,7 +687,7 @@ public class PhoneReader extends MessageArchiver {
 			}catch(SQLException e){
 				
 				LOGGER.severe("Phone Archiver: Error while inserting new " + //$NON-NLS-1$
-						"contact" + pr.getName()); //$NON-NLS-1$
+						"contact " + pr.getName()); //$NON-NLS-1$
 				e.printStackTrace();
 				
 			}finally{
@@ -744,9 +766,9 @@ public class PhoneReader extends MessageArchiver {
 		try{
 			
 			selectPhone = database.getConnection().prepareStatement(
-					"SELECT `id` FROM `contacts` WHERE `phone` LIKE '%?%'"); //$NON-NLS-1$
+					"SELECT `id` FROM `contacts` WHERE `phone` LIKE ?"); //$NON-NLS-1$
 			
-			selectPhone.setString(1, phone);
+			selectPhone.setString(1, "%" + phone + "%"); //$NON-NLS-1$ //$NON-NLS-2$
 			
 			if(selectPhone.execute()){
 				
