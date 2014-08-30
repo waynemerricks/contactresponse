@@ -352,7 +352,8 @@ public class PhoneReader extends MessageArchiver {
 			
 			if(id != -1 && lastId != id){
 				
-				LOGGER.info("Phone Archiver: Added " + (id - lastId) + " phone calls"); //$NON-NLS-1$ //$NON-NLS-2$
+				LOGGER.info("Phone Archiver: Added " + (id - lastId) +  //$NON-NLS-1$
+						" phone calls (" + id + ")"); //$NON-NLS-1$ //$NON-NLS-2$ 
 				updateLastProcessedID(id);
 				
 			}
