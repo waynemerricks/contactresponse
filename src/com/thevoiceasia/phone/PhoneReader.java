@@ -502,7 +502,68 @@ public class PhoneReader extends MessageArchiver {
 	 * @param pr PhoneRecord containing data
 	 */
 	private void insertMessage(int owner, PhoneRecord pr) {
-		// TODO Auto-generated method stub
+		
+		String SQL = "INSERT INTO `messages` (`owner`, `type`, `direction`, " + //$NON-NLS-1$
+				"`preview`) VALUES (?, ?, ?, ?)"; //$NON-NLS-1$
+		
+		/* Potentially could make this outside of message loop and reuse */
+		PreparedStatement insertMessage = null;
+		ResultSet results = null;
+		
+		try{
+			
+			insertMessage = database.getConnection().prepareStatement(SQL, 
+					Statement.RETURN_GENERATED_KEYS);
+			insertMessage.setInt(1, owner);
+			insertMessage.setString(2, "P"); //$NON-NLS-1$
+			insertMessage.setString(3, "I"); //$NON-NLS-1$
+			
+			String message = pr.getMessage();
+			String preview = null;
+			
+			if(message != null){
+				
+				preview = message;
+				
+				if(preview.length() > 150)
+					preview = preview.substring(0, 147) + "..."; //$NON-NLS-1$
+				
+			}
+			
+			insertMessage.setString(4, preview);
+			
+			boolean inserted = insertMessage.execute();
+			
+			if(!inserted && insertMessage.getUpdateCount() != -1 && 
+					insertMessage.getUpdateCount() > 0){
+				
+				results = insertMessage.getGeneratedKeys();
+				
+				int messageID = -1;
+				
+				while(results.next())
+					messageID = results.getInt(0);
+				
+				if(messageID != -1){
+					
+					if(!writeMessageToArchive(messageID, message))
+						removeMessageFromDatabase(messageID);
+					
+				}
+				
+			}
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Phone Archiver: Error inserting phone message to " + //$NON-NLS-1$
+					"messages table for " + pr.getName()); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(insertMessage, results);
+			
+		}
 		
 		
 	}
@@ -575,7 +636,7 @@ public class PhoneReader extends MessageArchiver {
 				
 				int rowsUpdated = updateContact.getUpdateCount();
 				
-				if(rowsUpdated != -1 && rowsUpdated > 0)
+				if(rowsUpdated > 0)
 					success = updateCustomFields(id, pr);
 				
 			}catch(SQLException e){
@@ -624,7 +685,7 @@ public class PhoneReader extends MessageArchiver {
 			
 			PreparedStatement updateCustom = null;
 			
-			/* TODO We have a choice, create three statements for each table and 
+			/* We have a choice, create three statements for each table and 
 			 * reuse for the entire loop
 			 * or create a statement and destroy it for each loop
 			 * 
@@ -645,7 +706,7 @@ public class PhoneReader extends MessageArchiver {
 					
 					int rowCount = updateCustom.getUpdateCount();
 					
-					if(rowCount != -1 && rowCount > 0)
+					if(rowCount > 0)
 						success = true;
 					
 				}
@@ -707,7 +768,9 @@ public class PhoneReader extends MessageArchiver {
 				for(int i = 1; i <= values.size(); i++)
 					insertContact.setString(i, values.get(i - 1).value);
 				
-				if(insertContact.execute()){
+				boolean inserted = insertContact.execute();
+				
+				if(inserted || insertContact.getUpdateCount() > 0){
 					
 					results = insertContact.getGeneratedKeys();
 					
