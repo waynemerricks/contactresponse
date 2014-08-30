@@ -263,6 +263,8 @@ public class PhoneReader extends MessageArchiver {
 				while(results.next())
 					lastID = results.getInt("value"); //$NON-NLS-1$
 				
+				LOGGER.finer("Phone Archiver: Got last read ID " + lastID); //$NON-NLS-1$
+				
 			}
 			
 		}catch(SQLException e){
@@ -332,6 +334,8 @@ public class PhoneReader extends MessageArchiver {
 				
 				results = selectPhones.getResultSet();
 				
+				LOGGER.info("Phone Archiver: Got Phone Messages"); //$NON-NLS-1$
+				
 				while(results.next())
 					id = processPhoneMessage(results);
 				
@@ -346,8 +350,12 @@ public class PhoneReader extends MessageArchiver {
 			
 			close(selectPhones, results);
 			
-			if(id != -1 && lastId != id)
+			if(id != -1 && lastId != id){
+				
+				LOGGER.info("Phone Archiver: Added " + (id - lastId) + " phone calls"); //$NON-NLS-1$ //$NON-NLS-2$
 				updateLastProcessedID(id);
+				
+			}
 			
 		}
 		
@@ -427,8 +435,10 @@ public class PhoneReader extends MessageArchiver {
 				
 			}
 			
-			pr.gender = results.getString("gender").substring(0, 1) //$NON-NLS-1$
-					.toUpperCase();
+			String gender = results.getString("gender"); //$NON-NLS-1$
+			
+			if(gender != null)
+				pr.gender = gender.substring(0, 1).toUpperCase();
 			
 			//Answered By 1234 (1234) (user@pc)
 			String key = results.getString("answeredBy"); //$NON-NLS-1$
@@ -458,24 +468,29 @@ public class PhoneReader extends MessageArchiver {
 			
 			for(int i = 0; i < STRING_FIELDS.length; i++){
 				
-				String value = checkNull(results.getString(STRING_FIELDS[i])
-						.trim());
+				String value = checkNull(results.getString(STRING_FIELDS[i]));
 				
-				pr.setString(STRING_FIELDS[i], value);
+				if(value != null)
+					pr.setString(STRING_FIELDS[i], value.trim());
 				
 			}
 			
 			for(int i = 0; i < CUSTOM_FIELDS.length; i++){
 				
-				key = checkNull(results.getString(CUSTOM_FIELDS[i])
-						.toLowerCase().trim());
-			
-				if(customIds.containsKey(CUSTOM_FIELDS[i])){
+				key = checkNull(results.getString(CUSTOM_FIELDS[i]));
 				
-					int dataId = customIds.get(CUSTOM_FIELDS[i]).getDataId(key);
+				if(key != null){
 					
-					if(dataId != -1)
-						pr.setCustomField(CUSTOM_FIELDS[i], dataId);
+					key = key.toLowerCase().trim();
+			
+					if(customIds.containsKey(CUSTOM_FIELDS[i])){
+					
+						int dataId = customIds.get(CUSTOM_FIELDS[i]).getDataId(key);
+						
+						if(dataId != -1)
+							pr.setCustomField(CUSTOM_FIELDS[i], dataId);
+						
+					}
 					
 				}
 				
@@ -525,8 +540,8 @@ public class PhoneReader extends MessageArchiver {
 				
 				preview = message;
 				
-				if(preview.length() > 150)
-					preview = preview.substring(0, 147) + "..."; //$NON-NLS-1$
+				if(preview.length() > 50)
+					preview = preview.substring(0, 47) + "..."; //$NON-NLS-1$
 				
 			}
 			
@@ -542,7 +557,7 @@ public class PhoneReader extends MessageArchiver {
 				int messageID = -1;
 				
 				while(results.next())
-					messageID = results.getInt(0);
+					messageID = results.getInt(1);
 				
 				if(messageID != -1){
 					
@@ -605,6 +620,7 @@ public class PhoneReader extends MessageArchiver {
 	private boolean updateContact(int id, PhoneRecord pr) {
 		
 		boolean success = false;
+		LOGGER.finer("Phone Archiver: Updating contact " + pr.getName()); //$NON-NLS-1$
 		
 		//Update Contact Table
 		ArrayList<KeyValue> values = pr.getNonNullValues();
@@ -737,6 +753,8 @@ public class PhoneReader extends MessageArchiver {
 	 */
 	private boolean createNewContact(PhoneRecord pr) {
 		
+		LOGGER.info("Phone Archiver: Creating new contact " + pr.getName()); //$NON-NLS-1$
+		
 		boolean success = false;
 		ArrayList<KeyValue> values = pr.getNonNullValues();
 				
@@ -777,7 +795,7 @@ public class PhoneReader extends MessageArchiver {
 					int id = -1;
 					
 					while(results.next())
-						id = results.getInt(0);
+						id = results.getInt(1);
 					
 					if(id != -1)
 						success = updateCustomFields(id, pr);
@@ -815,6 +833,7 @@ public class PhoneReader extends MessageArchiver {
 	private int getContactIdByEmail(String email){
 		
 		int id = -1;
+		LOGGER.finer("Phone Archiver: Looking up contact by email " + email); //$NON-NLS-1$
 		
 		PreparedStatement selectEmail = null;
 		ResultSet results = null;
@@ -832,6 +851,8 @@ public class PhoneReader extends MessageArchiver {
 				
 				while(results.next())
 					id = results.getInt("id"); //$NON-NLS-1$
+				
+				LOGGER.finer("Phone Archiver: Got contact id " + id); //$NON-NLS-1$
 				
 			}
 			
@@ -860,6 +881,7 @@ public class PhoneReader extends MessageArchiver {
 		
 		int id = -1;
 		
+		LOGGER.finer("Phone Archiver: Looking up contact by phone " + phone); //$NON-NLS-1$
 		PreparedStatement selectPhone = null;
 		ResultSet results = null;
 		
@@ -876,6 +898,8 @@ public class PhoneReader extends MessageArchiver {
 				
 				while(results.next())
 					id = results.getInt("id"); //$NON-NLS-1$
+				
+				LOGGER.finer("Phone Archiver: Got contact id " + id); //$NON-NLS-1$
 				
 			}
 			
