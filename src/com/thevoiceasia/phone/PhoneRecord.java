@@ -42,6 +42,16 @@ public class PhoneRecord {
 	}
 	
 	/**
+	 * Returns the message in this Phone Record e.g. called about goats
+	 * @return null if conversation key doesn't exist
+	 */
+	public String getMessage(){
+		
+		return stringFields.get("conversation"); //$NON-NLS-1$
+		
+	}
+	
+	/**
 	 * Gets the custom values related to the contact
 	 * @return
 	 */
