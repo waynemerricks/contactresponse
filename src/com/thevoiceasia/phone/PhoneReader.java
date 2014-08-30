@@ -1,5 +1,6 @@
 package com.thevoiceasia.phone;
 
+import java.io.IOException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -8,6 +9,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.logging.FileHandler;
 
 import org.apache.commons.validator.routines.EmailValidator;
 
@@ -36,6 +38,8 @@ public class PhoneReader extends MessageArchiver {
 		
 		super(host, user, pass, dbase, archivePath);
 		
+		setupLogging();
+		
 		phoneDatabase = new DatabaseHelper(phoneHost, phoneDbase, phoneUser, 
 				phonePass);
 		
@@ -50,6 +54,25 @@ public class PhoneReader extends MessageArchiver {
 		
 	}
 
+	/**
+	 * Set the Logger object
+	 */
+	private void setupLogging(){
+		
+		LOGGER.setLevel(LEVEL);
+		
+		try{
+			
+			LOGGER.addHandler(new FileHandler("phoneresponseincoming.log")); //$NON-NLS-1$
+			
+		}catch(IOException e){
+			
+			e.printStackTrace();
+			
+		}
+		
+	}
+	
 	/**
 	 * Grabs all the custom fields from the contact_fields table
 	 */
@@ -474,6 +497,17 @@ public class PhoneReader extends MessageArchiver {
 	}
 
 	/**
+	 * Inserts the phone message into the messages table
+	 * @param owner contact id that owns this message
+	 * @param pr PhoneRecord containing data
+	 */
+	private void insertMessage(int owner, PhoneRecord pr) {
+		// TODO Auto-generated method stub
+		
+		
+	}
+
+	/**
 	 * Checks for existing contact and updates or creates new one
 	 * if not found by phone number or email
 	 * 
@@ -495,6 +529,9 @@ public class PhoneReader extends MessageArchiver {
 			createNewContact(pr);
 		else
 			updateContact(id, pr);
+		
+		if(id != -1)
+			insertMessage(id, pr);
 		
 	}
 	
