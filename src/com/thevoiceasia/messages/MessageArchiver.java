@@ -8,7 +8,6 @@ import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -36,27 +35,6 @@ public class MessageArchiver extends Thread{
 		
 		if(directory.exists() && directory.isDirectory() && directory.canWrite())
 			archiveValid = true;
-		
-		setupLogging();
-		
-	}
-	
-	/**
-	 * Set the Logger object
-	 */
-	private void setupLogging(){
-		
-		LOGGER.setLevel(LEVEL);
-		
-		try{
-			
-			LOGGER.addHandler(new FileHandler("contactresponseincoming.log")); //$NON-NLS-1$
-			
-		}catch(IOException e){
-			
-			e.printStackTrace();
-			
-		}
 		
 	}
 	
