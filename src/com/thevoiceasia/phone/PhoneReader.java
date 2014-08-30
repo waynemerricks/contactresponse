@@ -24,6 +24,8 @@ public class PhoneReader extends MessageArchiver {
 		"journeyStage", "topic"}; //$NON-NLS-1$ //$NON-NLS-2$
 	public static final String[] STRING_FIELDS = {"caller_name", "number",   //$NON-NLS-1$//$NON-NLS-2$
 		"conversation", "location", "topic"}; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+	
+	private HashMap<String, String> valueTables = new HashMap<String, String>();  
 	private static final int MAX_RECORDS = 10;
 	
 	public PhoneReader(String host, String user, String pass, String dbase,
@@ -37,6 +39,10 @@ public class PhoneReader extends MessageArchiver {
 		
 		populateUserIDs();
 		populateCustomIDs();
+		
+		valueTables.put("s", "contact_values_small"); //$NON-NLS-1$ //$NON-NLS-2$
+		valueTables.put("m", "contact_values_medium");  //$NON-NLS-1$//$NON-NLS-2$
+		valueTables.put("l", "contact_values_large"); //$NON-NLS-1$ //$NON-NLS-2$
 		
 	}
 
@@ -436,7 +442,7 @@ public class PhoneReader extends MessageArchiver {
 				
 				key = checkNull(results.getString(CUSTOM_FIELDS[i])
 						.toLowerCase().trim());
-				
+			
 				if(customIds.containsKey(CUSTOM_FIELDS[i])){
 				
 					int dataId = customIds.get(CUSTOM_FIELDS[i]).getDataId(key);
@@ -548,9 +554,55 @@ public class PhoneReader extends MessageArchiver {
 		
 	}
 
+	/**
+	 * Updates the custom fields of this PhoneRecord for the contact
+	 * @param id id of the contact
+	 * @param pr record to get values from
+	 * @return true if successful
+	 */
 	private boolean updateCustomFields(int id, PhoneRecord pr) {
-		// TODO Auto-generated method stub
-		return false;
+		
+		boolean success = false;
+		
+		ArrayList<KeyValue> values = pr.getCustomValues();
+		
+		for(int i = 0; i < values.size(); i++){
+		
+			String fieldMapKey = values.get(i).key;
+			String tableType = customIds.get(fieldMapKey).getType();
+			
+			String SQL = "INSERT INTO `" + valueTables.get(tableType) +  //$NON-NLS-1$
+					"` (`owner_id`, `field_id`, `value`) VALUES (?, ?, ?) " + //$NON-NLS-1$
+					"ON DUPLICATE KEY UPDATE `value` = ?"; //$NON-NLS-1$ 
+			
+			PreparedStatement updateCustom = null;
+			
+			try{
+				
+				updateCustom = database.getConnection().prepareStatement(SQL);
+				updateCustom.setInt(1, id);
+				updateCustom.setInt(2, customIds.get(fieldMapKey).getID());
+				updateCustom.setString(3, values.get(i).value);
+				updateCustom.setInt(4, id);
+				
+				success = updateCustom.execute();
+				
+			}catch(SQLException e){
+				
+				LOGGER.severe("Phone Archiver: Error while updating " + //$NON-NLS-1$
+						"contact with custom fields " + id); //$NON-NLS-1$
+				e.printStackTrace();
+				
+			}finally{
+				
+				close(updateCustom, null);
+				
+			}
+			
+		}
+		
+		return success;
+		
 	}
 
 	private void createNewContact(PhoneRecord pr) {
