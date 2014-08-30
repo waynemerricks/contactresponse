@@ -15,7 +15,6 @@ import java.util.logging.Logger;
 
 import com.thevoiceasia.database.DatabaseHelper;
 import com.thevoiceasia.database.FieldMap;
-import com.thevoiceasia.phone.PhoneRecord;
 
 public class Contact {
 
