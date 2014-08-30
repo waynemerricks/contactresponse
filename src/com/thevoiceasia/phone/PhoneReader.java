@@ -607,7 +607,11 @@ public class PhoneReader extends MessageArchiver {
 
 	private void createNewContact(PhoneRecord pr) {
 		// TODO Auto-generated method stub
-		
+		ArrayList<KeyValue> values = pr.getNonNullValues();
+				
+		String SQL = "INSERT INTO `contacts`";//TODO pretty much the same as update
+		//but retain new id
+		//Custom fields use update as it will INSERT on DUP update
 	}
 
 	/**
