@@ -4,13 +4,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import org.apache.commons.validator.routines.EmailValidator;
 
-import com.thevoiceasia.contact.PhoneContact;
 import com.thevoiceasia.database.DatabaseHelper;
 import com.thevoiceasia.database.FieldMap;
+import com.thevoiceasia.database.KeyValue;
 import com.thevoiceasia.messages.MessageArchiver;
 
 public class PhoneReader extends MessageArchiver {
@@ -19,9 +20,9 @@ public class PhoneReader extends MessageArchiver {
 	private HashMap<String, Integer> userIds = new HashMap<String, Integer>();
 	private HashMap<String, FieldMap> customIds = 
 			new HashMap<String, FieldMap>();
-	private static final String[] CUSTOM_FIELDS = {"language", "religion",  //$NON-NLS-1$ //$NON-NLS-2$
+	public static final String[] CUSTOM_FIELDS = {"language", "religion",  //$NON-NLS-1$ //$NON-NLS-2$
 		"journeyStage", "topic"}; //$NON-NLS-1$ //$NON-NLS-2$
-	private static final String[] STRING_FIELDS = {"caller_name", "number",   //$NON-NLS-1$//$NON-NLS-2$
+	public static final String[] STRING_FIELDS = {"caller_name", "number",   //$NON-NLS-1$//$NON-NLS-2$
 		"conversation", "location", "topic"}; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 	private static final int MAX_RECORDS = 10;
 	
@@ -447,7 +448,7 @@ public class PhoneReader extends MessageArchiver {
 				
 			}
 			
-			new PhoneContact(database, pr);
+			updateDatabase(pr);
 			
 			lastID = results.getInt("id"); //$NON-NLS-1$
 			
@@ -459,6 +460,189 @@ public class PhoneReader extends MessageArchiver {
 		}
 		
 		return lastID;
+		
+	}
+
+	/**
+	 * Checks for existing contact and updates or creates new one
+	 * if not found by phone number or email
+	 * 
+	 * We can't rely on names so we'll have to create a new one if we only
+	 * have the name to go on
+	 * @param pr
+	 */
+	private void updateDatabase(PhoneRecord pr) {
+		
+		int id = -1;
+		
+		if(pr.getNumber() != null)
+			id = getContactIdByPhone(pr.getNumber());
+		
+		if(id == -1 && pr.email != null)
+			id = getContactIdByEmail(pr.email);
+		
+		if(id == -1)
+			createNewContact(pr);
+		else
+			updateContact(id, pr);
+		
+	}
+	
+	/**
+	 * Updates the contact represented by the PhoneRecord
+	 * @param id id of contact we found in the contacts table
+	 * @param pr these values are used to update
+	 * @return
+	 */
+	private boolean updateContact(int id, PhoneRecord pr) {
+		
+		boolean success = false;
+		
+		//Update Contact Table
+		ArrayList<KeyValue> values = pr.getNonNullValues();
+		
+		if(values.size() > 0){
+			
+			String SQL = "UPDATE `contacts` SET `" + values.get(0).key + "` = ?";  //$NON-NLS-1$//$NON-NLS-2$
+			
+			if(values.size() > 1)
+				for(int i = 1; i < values.size(); i++)
+					SQL += ", `" + values.get(i).key + " = ?";  //$NON-NLS-1$//$NON-NLS-2$
+			
+			SQL += " WHERE `id` = ?"; //$NON-NLS-1$
+			
+			PreparedStatement updateContact = null;
+			
+			try{
+				
+				updateContact = database.getConnection().prepareStatement(SQL);
+				
+				for(int i = 1; i <= values.size(); i++)
+					updateContact.setString(i, values.get(i - 1).value);
+				
+				updateContact.setInt(values.size() + 1, id);
+				
+				if(updateContact.execute())
+					success = updateCustomFields(id, pr);
+				
+			}catch(SQLException e){
+				
+				LOGGER.severe("Phone Archiver: Error while updating " + //$NON-NLS-1$
+						"contact" + id); //$NON-NLS-1$
+				e.printStackTrace();
+				
+			}finally{
+				
+				close(updateContact, null);
+				
+			}
+			
+		}else{
+			
+			success = true;
+			LOGGER.info("Phone Archiver: Nothing to update for " + id); //$NON-NLS-1$
+			
+		}
+			
+		return success;
+		
+	}
+
+	private boolean updateCustomFields(int id, PhoneRecord pr) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	private void createNewContact(PhoneRecord pr) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	/**
+	 * Searches contacts table and returns record id associated with email
+	 * @param email
+	 * @return id or -1 if not found
+	 */
+	private int getContactIdByEmail(String email){
+		
+		int id = -1;
+		
+		PreparedStatement selectEmail = null;
+		ResultSet results = null;
+		
+		try{
+			
+			selectEmail = database.getConnection().prepareStatement(
+					"SELECT `id` FROM `contacts` WHERE `email` LIKE '%?%'"); //$NON-NLS-1$
+			
+			selectEmail.setString(1, email);
+			
+			if(selectEmail.execute()){
+				
+				results = selectEmail.getResultSet();
+				
+				while(results.next())
+					id = results.getInt("id"); //$NON-NLS-1$
+				
+			}
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Phone Archiver: Error searching for contact by " + //$NON-NLS-1$
+					"email " + email); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(selectEmail, results);
+			
+		}
+		
+		return id;
+		
+	}
+	
+	/**
+	 * Searches contacts table and returns record id associated with phone number
+	 * @param phone
+	 * @return id or -1 if not found
+	 */
+	private int getContactIdByPhone(String phone){
+		
+		int id = -1;
+		
+		PreparedStatement selectPhone = null;
+		ResultSet results = null;
+		
+		try{
+			
+			selectPhone = database.getConnection().prepareStatement(
+					"SELECT `id` FROM `contacts` WHERE `phone` LIKE '%?%'"); //$NON-NLS-1$
+			
+			selectPhone.setString(1, phone);
+			
+			if(selectPhone.execute()){
+				
+				results = selectPhone.getResultSet();
+				
+				while(results.next())
+					id = results.getInt("id"); //$NON-NLS-1$
+				
+			}
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Phone Archiver: Error searching for contact by " + //$NON-NLS-1$
+					"phone " + phone); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(selectPhone, results);
+			
+		}
+		
+		return id;
 		
 	}
 	
