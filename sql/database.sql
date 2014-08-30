@@ -26,8 +26,10 @@ CREATE TABLE `contact_fields` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `type` char(1) NOT NULL DEFAULT 'S',
   `label` varchar(25) NOT NULL DEFAULT '',
+  `data` text,
+  `dbMap` varchar(25) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -42,9 +44,8 @@ CREATE TABLE `contact_values_large` (
   `owner_id` int(11) NOT NULL DEFAULT '1',
   `field_id` int(11) NOT NULL DEFAULT '1',
   `value` text,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `owner_field` (`owner_id`,`field_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=107 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -59,8 +60,7 @@ CREATE TABLE `contact_values_medium` (
   `owner_id` int(11) NOT NULL DEFAULT '1',
   `field_id` int(11) NOT NULL DEFAULT '1',
   `value` varchar(50) DEFAULT '',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `owner_field` (`owner_id`,`field_id`)
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -76,9 +76,8 @@ CREATE TABLE `contact_values_small` (
   `owner_id` int(11) NOT NULL DEFAULT '1',
   `field_id` int(11) NOT NULL DEFAULT '1',
   `value` varchar(25) DEFAULT '',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `owner_field` (`owner_id`,`field_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=276 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -102,7 +101,7 @@ CREATE TABLE `contacts` (
   `status` char(1) NOT NULL DEFAULT 'N',
   `auto_reply` char(1) NOT NULL DEFAULT 'Y',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=449 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=209 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -114,9 +113,9 @@ DROP TABLE IF EXISTS `languages`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `languages` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `language` varchar(25) NOT NULL DEFAULT '',
+  `language` varchar(25) CHARACTER SET latin1 NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -138,7 +137,7 @@ CREATE TABLE `messages` (
   `status` char(1) NOT NULL DEFAULT 'D',
   `preview` varchar(50) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=61927 DEFAULT CHARSET=utf8 COMMENT='utf8_general_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=1826 DEFAULT CHARSET=utf8 COMMENT='utf8_general_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -185,7 +184,7 @@ CREATE TABLE `roles` (
   `description` text NOT NULL,
   `active_permissions` text NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -200,7 +199,7 @@ CREATE TABLE `settings` (
   `name` varchar(25) NOT NULL DEFAULT '',
   `value` varchar(25) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -261,4 +260,4 @@ CREATE TABLE `users` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2014-08-29 23:07:21
+-- Dump completed on 2014-08-30 23:38:25
