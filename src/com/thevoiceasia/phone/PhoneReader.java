@@ -841,9 +841,9 @@ public class PhoneReader extends MessageArchiver {
 		try{
 			
 			selectEmail = database.getConnection().prepareStatement(
-					"SELECT `id` FROM `contacts` WHERE `email` LIKE '%?%'"); //$NON-NLS-1$
+					"SELECT `id` FROM `contacts` WHERE `email` LIKE ?"); //$NON-NLS-1$
 			
-			selectEmail.setString(1, email);
+			selectEmail.setString(1, "%" + email + "%"); //$NON-NLS-1$ //$NON-NLS-2$
 			
 			if(selectEmail.execute()){
 				
