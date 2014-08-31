@@ -413,7 +413,7 @@
 
             }
 
-          }else if(data.slice(0, failedNeedle.length == failedNeedle){
+          }else if(data.slice(0, failedNeedle.length == failedNeedle)){
             alert(data);
           }else {//If its not success or failure then we probably session timed out so go back to login screen
             window.location='index.php';
