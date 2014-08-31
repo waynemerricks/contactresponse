@@ -47,6 +47,12 @@ hr {
 
 }
 
+#hidden {
+
+  display: none;
+
+}
+
 #login {
 
   width: 90%;
