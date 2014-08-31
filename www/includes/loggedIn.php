@@ -33,7 +33,7 @@
               `permissions`
             FROM `role_members`
             INNER JOIN `roles` ON `role_members`.`role_id` = `roles`.`id`
-            WHERE `role_members`.`user_id` = ' . $_SESSION['userid'];
+            WHERE `roles`.`active_permissions` != \'\' AND `role_members`.`user_id` = ' . $_SESSION['userid'];
 
     $result = $mysqli->query($sql);
     $permissions = NULL;
