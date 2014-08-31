@@ -14,9 +14,9 @@
     $contactsPending = getInbox(getUserId(), isDefaultHelper(), $mysqli, $_GET['lastMessage']);
 
     if(sizeof($contactsPending) > 0)
-      echo 'SUCCESS|' . sizeof($contactsPending);
+      echo 'SUCCESS' . json_encode($contactsPending);
     else
-      echo 'SUCCESS|0';
+      echo 'SUCCESS';
 
   }else
     echo 'FAIL';
