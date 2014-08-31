@@ -22,18 +22,6 @@
     <link rel="stylesheet" type="text/css" href="css/menu.css">
     <script type="text/javascript" src="includes/jquery-2.1.1.min.js"></script>
     <script type="text/javascript">
-      //JQuery updateInbox messages
-      function updateInbox(){
-
-        $.get( "ajax/test.html", function( data ) {
-
-          $( ".result" ).html( data );
-          alert( "Load was performed." );
-
-        });
-
-      }
-
       /** JS Flags this contact for a quick generic auto reply
        * @param contact contact id to reply to
        * @param maxid id of latest message this applies to
@@ -129,7 +117,12 @@
         <?php
           } else {
 
+            $lastMessageID = -1;
+
             for($i = 0; $i < sizeof($contactsPending); $i++){ 
+
+              if($contactsPending[$i]['maxid'] > $lastMessageID)
+                $lastMessageID = $contactsPending[$i]['maxid'];
 
               $previewIsFullMessage = false;
 
@@ -259,6 +252,27 @@
         <li class="right"><a href="logout.php">Logout</a></li>
       </ul>
     </div>
+    <div id="hidden">
+      <input type="hidden" id="lastMessageID" value="<?php echo $lastMessageID; ?>" />
+    </div>
+    <script type="text/javascript">
+      /* Needs to be here because we have to loop through to get lastMessageID
+       * Its pointless doing two loops to achieve this
+       */
+      //JQuery updateInbox messages
+      function updateInbox(){
+        //Get last message ID from the hidden lastMessageID input field
+        var lastMessage = $('input[type=hidden]#lastMessageID').val();
+        alert("updating" + lastMessage);
+
+        $.get( "dynamic/updateinbox.php?lastMessage=" + lastMessage, function( data ) {
+          alert( data );
+        });
+
+      }
+
+      var updateTimer = setTimeout(function(){ updateInbox(); }, 1000);
+    </script>
   </body>
 </html>
 <?php
