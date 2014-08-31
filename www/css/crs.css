@@ -22,6 +22,7 @@ hr {
 #logincontainer {
 
   width: 60%;
+  max-width: 400px;
   margin: 0 auto;
   background: #aad4ff;
   margin-top: 5px;
