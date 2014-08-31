@@ -27,20 +27,26 @@
     <link rel="stylesheet" type="text/css" href="css/crs.css">
   </head>
   <body>
+    <div id="logincontainer">
+      <div id="loginheader">
+        &nbsp;
+      </div>
+      <?php if($_SESSION['failedLogins'] < 3){ ?>
+        <div id="login">
+          <form method="post">
+            <label for="login">User Name:</label><input id="login" name="login" type="text" value=""></input><br>
+            <label for="password">Password:</label><input id="password" name="password" type="password" value=""></input><br>
+            <input class="button" id="submit" type="submit" value="login"></input><br>
+          </form>
+        </div>
+      <?php } ?>
+    </div>
     <div id="error">
       <?php if($loginError == 1){ ?>
         Invalid User name or password please try again
+      <?php } else if($_SESSION['failedLogins'] >= 3){ ?>
+        Too many failed login attempts, you have been blocked for 20minutes
       <?php } ?>
     </div>
-
-    <?php if($_SESSION['failedLogins'] < 3){ ?>
-      <div id="login">
-        <form method="post">
-          <label for="login">User Name:</label><input id="login" name="login" type="text" value=""></input><br>
-          <label for="password">Password:</label><input id="password" name="password" type="password" value=""></input><br>
-          <input id="submit" type="submit" value="login"></input><br>
-        </form>
-      </div>
-    <?php } ?>
   </body>
 </html>

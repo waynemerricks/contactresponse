@@ -8,10 +8,80 @@ hr {
   background-image: -o-linear-gradient(left, rgba(0,0,0,0), rgba(0,0,0,0.75), rgba(0,0,0,0));
 
 }
+
+#error {
+
+  width: 80%;
+  margin: 0 auto;
+  color: red;
+  font-weight: bold;
+  text-align: center;
+
+}
+
+#logincontainer {
+
+  width: 60%;
+  margin: 0 auto;
+  background: #aad4ff;
+  margin-top: 5px;
+  margin-bottom: 5px;
+  padding-bottom: 1px;
+  border: 1px solid black;
+
+}
+
+#loginheader {
+
+  width: 100%;
+  background-color: #005fbf;
+  font-size: 18px;
+  font-family: Arial;
+  font-weight: bold;
+  color: #FFF;
+  text-align: center;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid black;
+
+}
+
+#login {
+
+  width: 90%;
+  margin: 0 auto;
+
+}
+
+#login input {
+
+  width: calc(100% - 150px);
+
+}
+
+#login input.button {
+
+  width: 100%;
+  margin-top: 10px;
+  background-color: #005fbf;
+  border : solid 1px #000;
+  font-size : 16px;
+  font-weight: bolder;
+  color : #ffffff;
+  font-variant:small-caps;
+
+}
+
 #login label {
 
   display: inline-block;
-  width: 200px;
+  width: 150px;
+  font-size: 14px;
+  font-family: Arial;
+  font-weight: bold;
+  color: #000;
+
 
 }
 
