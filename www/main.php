@@ -101,11 +101,103 @@
         }
 
       }
+
+      //Creates a new row via JS
+      function addContact(newMessage){
+
+        var src = 'images/generic.png';
+
+        if(newMessage.type == 'E')
+          src = 'images/email.png';
+        else if(newMessage.type == 'P')
+          src = 'images/phone.png';
+        else if(newMessage.type == 'S')
+          src = 'images/sms.png';
+
+        var previewIsFullMessage = false;
+
+        if(newMessage.preview.length < 50)
+          previewIsFullMessage = true;
+
+        var canReplyFromInbox = $('#canReplyFromInbox').val();
+        var canJunk = $('#canJunk').val();
+
+        var rowHTML = 
+          '<tr id="contact-' + newMessage.id + '">' + "\n" +
+          '  <td class="icon">' + "\n" +
+          '    <div id="container">' + "\n" +
+          '      <div id="icon">' + "\n" +
+          '        <a href="viewPending.php?id=' + newMessage.id + '">' + "\n" +
+          '          <img class="icon" src="' + src + '" />' + "\n" +
+          '        </a>' + "\n" +
+          '      </div>' + "\n" +
+          '      <div id="badge" style="background-color: rgb(31, 131, 23)">' + "\n" +
+                  newMessage.waiting + "\n" +
+          '      </div>' + "\n" +
+          '    </div>' + "\n" +
+          '  </td>' + "\n" +
+          '  <td class="time centre">' + "\n" +
+          '    <a href="viewPending.php?id=' + newMessage.id + '">' + "\n" +
+                newMessage.date + "\n" +
+          '    </a>' + "\n" +
+          '  </td>' + "\n" +
+          '  <td class="name">' + "\n" +
+          '    <a href="viewPending.php?id=' + newMessage.id + '">' + "\n" +
+                newMessage.name + "\n" +
+          '    </a>' + "\n" +
+          '  </td>' + "\n" +
+          '  <td class="preview">' + "\n" +
+          '    <a href="viewPending.php?id=' + newMessage.id + '">' + "\n" +
+                 newMessage.preview + "\n" +
+          '    </a>' + "\n";
+
+          var quickTools = '';
+
+          if(canReplyFromInbox == 1){
+
+            quickTools = '<div class="quickTools">' + "\n";
+
+            if(newMessage.waiting == 1 && previewIsFullMessage){
+
+              quickTools += '<a id="replygeneric-' + newMessage.id + '" href="javascript:void(0)" onclick="replyGeneric(\'' + newMessage.id + '\', \'' + newMessage.maxid + '\')">' + "\n" +
+                            '  <img alt="Generic" src="images/toolgeneric.png" />' + "\n" +
+                            '</a>' + "\n" +
+                            '<a id="replyprayer-' + newMessage.id + '" href="javascript:void(0)" onclick="replyPrayer(\'' + newMessage.id + '\', \'' + newMessage.maxid + '\')">' + "\n" +
+                            '  <img alt="Prayer" src="images/prayer.png" />' + "\n" +
+                            '</a>' + "\n" +
+                            '<a id="replysong-' + newMessage.id + '" href="javascript:void(0)" onclick="replySong(\'' + newMessage.id + '\', \'' + newMessage.maxid + '\')">' + "\n" +
+                            '  <img alt="Song" src="images/song.png" />' + "\n" +
+                            '</a>' + "\n" +
+                            '<a id="replycompetition-' + newMessage.id + '" href="javascript:void(0)" onclick="replyCompetition(\'' + newMessage.id + '\', \'' + newMessage.maxid + '\')">' + "\n" +
+                            '  <img alt="Competition" src="images/competition.png" />' + "\n" +
+                            '</a>' + "\n";
+
+            }
+
+            if(canJunk){
+
+              quickTools += '<a href="javascript:void(0)" onclick="junkMail(\'' + newMessage.id + '\')">' + "\n" +
+                            '  <img alt="Mark as Junk" src="images/junk.png" />' + "\n" +
+                            '</a>' + "\n";
+
+            }
+
+            quickTools += '</div>' + "\n";
+
+          }
+
+          rowHTML += quickTools + '  </td>' + "\n" +
+                                  '</tr>' + "\n";
+
+          //Append this to the bottom of the table
+          $('#inbox').append(rowHTML);
+
+      }
     </script>
   </head>
   <body>
     <div class="inbox">
-      <table class="inbox">
+      <table id="inbox" class="inbox">
         <tr class="header">
           <th>&nbsp;</th>
           <th class="centre">Date</th>
@@ -126,7 +218,8 @@
 
               $previewIsFullMessage = false;
 
-              if(substr($contactsPending[$i]['preview'], -3) != '...')
+              if(substr($contactsPending[$i]['preview'], -3) != '...' || 
+                    strlen($contactsPending[$i]['preview'] < 50))
                 $previewIsFullMessage = true;
 
               $src = 'images/generic.png';
@@ -254,6 +347,10 @@
     </div>
     <div id="hidden">
       <input type="hidden" id="lastMessageID" value="<?php echo $lastMessageID; ?>" />
+      <?php if(canReplyFromInbox()) { $value = 1; }else{ $value = 0; } ?>
+      <input type="hidden" id="canReplyFromInbox" value="<?php echo $value; ?>" />
+      <?php if(canJunk()) { $value = 1; }else{ $value = 0; } ?>
+      <input type="hidden" id="canJunk" value="<?php echo $value; ?>" />
     </div>
     <script type="text/javascript">
       /* Needs to be here because we have to loop through to get lastMessageID
@@ -264,7 +361,6 @@
         //Get last message ID from the hidden lastMessageID input field
         var lastMessage = $('input[type=hidden]#lastMessageID').val();
 
-        lastMessage = 1820;//TODO Remove debug
         $.get( "dynamic/updateinbox.php?lastMessage=" + lastMessage,
               function( data ) {
 
@@ -297,15 +393,16 @@
                 $('#replyprayer-' + id).attr('onclick',"replyPrayer('" + id + "', '" + newMessages[i].maxid + "')");
                 $('#replysong-' + id).attr('onclick',"replySong('" + id + "', '" + newMessages[i].maxid + "')");
                 $('#replycompetition-' + id).attr('onclick',"replyCompetition('" + id + "', '" + newMessages[i].maxid + "')");
-                $('#contact-' + id).fadeOut('fast').fadeIn('fast');
 
               }else{
 
                 //Doesn't exist so make a new one
-                //TODO Flash row for visual effect if anyones looking
+                addContact(newMessages[i]);
 
               }
 
+              //Flash row for visual effect if anyones looking
+              $('#contact-' + id).fadeOut('fast').fadeIn('fast');
               //Update lastMessage
               if(lastMessage != -1)
                 $('input[type=hidden]#lastMessageID').val(lastMessage);
@@ -319,8 +416,8 @@
 
       }
 
-      //TODO Change back to setInterval
-      var updateTimer = setTimeout(function(){ updateInbox(); }, 5000);
+      //Update Inbox every 30 seconds via jquery
+      var updateTimer = setInterval(function(){ updateInbox(); }, 30000);
     </script>
   </body>
 </html>
