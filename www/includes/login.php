@@ -9,6 +9,7 @@
    */
   function checkLogin($mysqli, $username, $password){
 
+    $loginError = 0;
     $mysqli = getDatabaseRead();//Get read connection
 
     //Verify User Password
@@ -22,7 +23,11 @@
 
           $stmt->bind_result($hash, $id);
 
+          $gotLogin = FALSE;
+
           while($stmt->fetch()){
+
+            $gotLogin = TRUE;
 
             if(password_verify($password, $hash)){
 
@@ -32,9 +37,16 @@
             }else{
 
               incrementLoginFail();
-              $loginError = TRUE;
+              $loginError = 1;
 
             }
+
+          }
+
+          if($gotLogin === FALSE){
+
+            incrementLoginFail();
+            $loginError = 1;
 
           }
 
@@ -48,6 +60,8 @@
 
     }else
       die('Failed to prepare login lookup:' . $mysqli->error);
+
+    return $loginError;
 
   }
 

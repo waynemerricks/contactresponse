@@ -7,14 +7,14 @@
   if(!isset($_SESSION['failedLogins']))
     $_SESSION['failedLogins'] = 0;
 
-  $loginError = FALSE;//Flag for failed to login or not
+  $loginError = 0;//Flag for failed to login or not
 
   if(isset($_POST['login'], $_POST['password'])){
 
     $mysqli = getDatabaseRead();//Get read connection
 
     //Verify User Password
-    checkLogin($mysqli, $_POST['login'], $_POST['password']);
+    $loginError = checkLogin($mysqli, $_POST['login'], $_POST['password']);
 
     $mysqli->close();
 
@@ -28,7 +28,7 @@
   </head>
   <body>
     <div id="error">
-      <?php if($loginError){ ?>
+      <?php if($loginError == 1){ ?>
         Invalid User name or password please try again
       <?php } ?>
     </div>
