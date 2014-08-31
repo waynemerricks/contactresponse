@@ -200,16 +200,16 @@
               <?php if(canReplyFromInbox()){ ?>
                 <div class="quickTools">
                   <?php if($contactsPending[$i]['waiting'] == 1 && $previewIsFullMessage){ //Only show quick tools if there is one reply ?>
-                    <a href="javascript:void(0)">
-                      <img alt="Generic" src="images/toolgeneric.png" onclick="replyGeneric('<?php echo $contactsPending[$i]['id']; ?>', '<?php echo $contactsPending[$i]['maxid']; ?>')" />
+                    <a id="replygeneric-<?php echo $contactsPending[$i]['id']; ?>" href="javascript:void(0)" onclick="replyGeneric('<?php echo $contactsPending[$i]['id']; ?>', '<?php echo $contactsPending[$i]['maxid']; ?>')">
+                      <img alt="Generic" src="images/toolgeneric.png" />
                     </a>
-                    <a href="javascript:void(0)" onclick="replyPrayer('<?php echo $contactsPending[$i]['id']; ?>', '<?php echo $contactsPending[$i]['maxid']; ?>')">
+                    <a id="replyprayer-<?php echo $contactsPending[$i]['id']; ?>" href="javascript:void(0)" onclick="replyPrayer('<?php echo $contactsPending[$i]['id']; ?>', '<?php echo $contactsPending[$i]['maxid']; ?>')">
                       <img alt="Prayer" src="images/prayer.png" />
                     </a>
-                    <a href="javascript:void(0)" onclick="replySong('<?php echo $contactsPending[$i]['id']; ?>', '<?php echo $contactsPending[$i]['maxid']; ?>')">
+                    <a id="replysong-<?php echo $contactsPending[$i]['id']; ?>" href="javascript:void(0)" onclick="replySong('<?php echo $contactsPending[$i]['id']; ?>', '<?php echo $contactsPending[$i]['maxid']; ?>')">
                       <img alt="Song" src="images/song.png" />
                     </a>
-                    <a href="javascript:void(0)" onclick="replyCompetition('<?php echo $contactsPending[$i]['id']; ?>', '<?php echo $contactsPending[$i]['maxid']; ?>')">
+                    <a id="replycompetition-<?php echo $contactsPending[$i]['id']; ?>" href="javascript:void(0)" onclick="replyCompetition('<?php echo $contactsPending[$i]['id']; ?>', '<?php echo $contactsPending[$i]['maxid']; ?>')">
                       <img alt="Competition" src="images/competition.png" />
                     </a>
                   <?php } ?>
@@ -263,15 +263,64 @@
       function updateInbox(){
         //Get last message ID from the hidden lastMessageID input field
         var lastMessage = $('input[type=hidden]#lastMessageID').val();
-        alert("updating" + lastMessage);
 
-        $.get( "dynamic/updateinbox.php?lastMessage=" + lastMessage, function( data ) {
-          alert( data );
+        lastMessage = 1820;//TODO Remove debug
+        $.get( "dynamic/updateinbox.php?lastMessage=" + lastMessage,
+              function( data ) {
+
+          var needle = 'SUCCESS';
+
+          if(data.slice(0, needle.length) == needle){
+
+            var json = data.substring(needle.length, data.length);
+            var newMessages = $.parseJSON( json );
+            var lastMessage = -1;
+
+            for(i = 0; i < newMessages.length; i++){
+
+              //Store Biggest lastMessage
+              if(lastMessage < newMessages[i].maxid)
+                lastMessage = newMessages[i].maxid;
+
+              //Update message waiting count
+              var id = newMessages[i].id;
+
+              if ($('#contact-' + id).find('#badge').length > 0) { 
+
+                //If element exists, update it
+                var messages = $('#contact-' + id).find('#badge').html().trim();
+                messages = Number(messages) + Number(newMessages[i].waiting);
+                $('#contact-' + id).find('#badge').html(messages);
+
+                //Update the quick tools links
+                $('#replygeneric-' + id).attr('onclick',"replyGeneric('" + id + "', '" + newMessages[i].maxid + "')");
+                $('#replyprayer-' + id).attr('onclick',"replyPrayer('" + id + "', '" + newMessages[i].maxid + "')");
+                $('#replysong-' + id).attr('onclick',"replySong('" + id + "', '" + newMessages[i].maxid + "')");
+                $('#replycompetition-' + id).attr('onclick',"replyCompetition('" + id + "', '" + newMessages[i].maxid + "')");
+                $('#contact-' + id).fadeOut('fast').fadeIn('fast');
+
+              }else{
+
+                //Doesn't exist so make a new one
+                //TODO Flash row for visual effect if anyones looking
+
+              }
+
+              //Update lastMessage
+              if(lastMessage != -1)
+                $('input[type=hidden]#lastMessageID').val(lastMessage);
+
+            }
+
+          }else
+            alert(data);
+
         });
 
       }
 
-      var updateTimer = setTimeout(function(){ updateInbox(); }, 1000);
+      //TODO Change back to setInterval
+      var updateTimer = setTimeout(function(){ updateInbox(); }, 5000);
     </script>
   </body>
 </html>
