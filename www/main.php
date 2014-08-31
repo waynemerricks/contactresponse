@@ -373,7 +373,7 @@
             var newMessages = $.parseJSON( json );
             var lastMessage = -1;
 
-            if(newMessages.length > 0 && $('#nomessages').length > 0) { 
+            if(newMessages.length > 0 && $('#nomessages').length > 0)
               $('#nomessages').remove();
 
             for(i = 0; i < newMessages.length; i++){
