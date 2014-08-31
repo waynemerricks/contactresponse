@@ -365,12 +365,16 @@
               function( data ) {
 
           var needle = 'SUCCESS';
+          var failedNeedle = 'FAILED';
 
           if(data.slice(0, needle.length) == needle){
 
             var json = data.substring(needle.length, data.length);
             var newMessages = $.parseJSON( json );
             var lastMessage = -1;
+
+            if(newMessages.length > 0)
+              alert("Got " + newMessages.length + " to update");
 
             for(i = 0; i < newMessages.length; i++){
 
@@ -409,8 +413,11 @@
 
             }
 
-          }else
+          }else if(data.slice(0, failedNeedle.length == failedNeedle){
             alert(data);
+          }else {//If its not success or failure then we probably session timed out so go back to login screen
+            window.location='index.php';
+          }
 
         });
 
