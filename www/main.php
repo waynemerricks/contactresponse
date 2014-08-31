@@ -389,8 +389,17 @@
 
                 //If element exists, update it
                 var messages = $('#contact-' + id).find('#badge').html().trim();
-                messages = Number(messages) + Number(newMessages[i].waiting);
-                $('#contact-' + id).find('#badge').html(messages);
+
+                if(messages != '++'){//If its not already ++ update it
+
+                  messages = Number(messages) + Number(newMessages[i].waiting);
+
+                  if(messages > 99)//if its now > 99 just make it ++
+                    messages = '++';
+
+                  $('#contact-' + id).find('#badge').html(messages);
+
+                }
 
                 //Update the quick tools links
                 $('#replygeneric-' + id).attr('onclick',"replyGeneric('" + id + "', '" + newMessages[i].maxid + "')");
