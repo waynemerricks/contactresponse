@@ -205,7 +205,7 @@
           <th>Preview</th>
         </tr>
         <?php if(sizeof($contactsPending) == 0){ ?>
-          <tr><td colspan="4">There are no messages in your inbox</td></tr>
+          <tr id="nomessages"><td colspan="4">There are no messages in your inbox</td></tr>
         <?php
           } else {
 
@@ -373,8 +373,8 @@
             var newMessages = $.parseJSON( json );
             var lastMessage = -1;
 
-            if(newMessages.length > 0)
-              alert("Got " + newMessages.length + " to update");
+            if(newMessages.length > 0 && $('#nomessages').length > 0) { 
+              $('#nomessages').remove();
 
             for(i = 0; i < newMessages.length; i++){
 
