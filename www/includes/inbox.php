@@ -1,6 +1,6 @@
 <?php
 
-  function getInbox($userid, $getUnassignedRecords, $mysqli){
+  function getInbox($userid, $getUnassignedRecords, $mysqli, $lastMessage = NULL){
 
     $messages = array();
     $sql = 'SELECT `messages`.`created`, `messages`.`type`, `contacts`.`name`,
@@ -8,13 +8,18 @@
               `contacts`.`id`, COUNT(*) AS `waiting`, MAX(`messages`.`id`) AS `msg_id`
             FROM `messages` 
             INNER JOIN `contacts` ON `messages`.`owner` = `contacts`.`id`
-            WHERE (`messages`.`assigned_user` = ' . $userid;
+            WHERE ';
+
+    if($lastMessage != NULL)
+      $sql .= '`messages`.`id` > ' . $lastMessage . ' AND ';
+
+    $sql .= '(`messages`.`assigned_user` = ' . $userid;
 
     if($getUnassignedRecords === TRUE)
       $sql .= ' OR `messages`.`assigned_user` = 0';
 
     $sql .= ') AND `messages`.`status` = \'D\' AND `messages`.`type` != \'A\'
-            GROUP BY `messages`.`owner` ORDER BY `messages`.`created` ASC';
+             GROUP BY `messages`.`owner` ORDER BY `messages`.`created` ASC';
 
     $result = $mysqli->query($sql);
 
