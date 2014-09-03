@@ -1,10 +1,7 @@
 package com.thevoiceasia.email;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -12,22 +9,17 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Date;
 import java.util.logging.FileHandler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import com.thevoiceasia.contact.Contact;
 import com.thevoiceasia.database.DatabaseHelper;
 import com.thevoiceasia.html.HTML2Text;
+import com.thevoiceasia.messages.MessageArchiver;
 import com.thevoiceasia.sms.XpressMS;
 
-public class EmailArchiver extends Thread implements EmailReader {
+public class EmailArchiver extends MessageArchiver implements EmailReader {
 
 	private DatabaseHelper database = null;
 	private String ARCHIVE_PATH = null, mailHost = null, mailUser = null, mailPass = null;
-	private boolean archiveValid = false;
-	private static final Logger LOGGER = Logger.getLogger("com.thevoiceasia"); //$NON-NLS-1$
-	private static final Level LEVEL = Level.INFO;//Logging level of this class
-	private static final int EMAIL_CHECK_PERIOD = 60; //Time to check for emails in seconds
 		
 	/**
 	 * Receives Email from the given email inbox (no subfolders) and archives
@@ -44,6 +36,8 @@ public class EmailArchiver extends Thread implements EmailReader {
 	public EmailArchiver(String dbHost, String dbUser, String dbPass, 
 			String dbBase, String mailHost, String mailUser, String mailPass, 
 			String emailStorePath){
+		
+		super(dbHost, dbUser, dbPass, dbBase, emailStorePath);
 		
 		this.mailHost = mailHost;
 		this.mailUser = mailUser;
@@ -62,24 +56,6 @@ public class EmailArchiver extends Thread implements EmailReader {
 	}
 	
 	/**
-	 * Connects to MySQL
-	 */
-	public void connectToDB(){
-		
-		database.connect();
-		
-	}
-	
-	/**
-	 * Disconnect from MySQL
-	 */
-	public void disconnectFromDB(){
-		
-		database.disconnect();
-		
-	}
-	
-	/**
 	 * Get emails to process
 	 * @throws InterruptedException 
 	 */
@@ -88,17 +64,6 @@ public class EmailArchiver extends Thread implements EmailReader {
 		EmailReceiver receiver = new EmailReceiver(mailHost, mailUser, mailPass, this);
 		receiver.start();
 		receiver.join();
-		
-	}
-	
-	/**
-	 * Flag that indicates whether the archive for this object is valid and
-	 * has write permissions
-	 * @return true if all is good, false if things are bad
-	 */
-	public boolean isValidArchive(){
-		
-		return archiveValid;
 		
 	}
 	
@@ -147,11 +112,12 @@ public class EmailArchiver extends Thread implements EmailReader {
 				try {
 					
 					archiver.connectToDB();
+					archiver.getAssignedUserList();
 					archiver.getEmails();
 					archiver.disconnectFromDB();
 					
-					LOGGER.finest("Archiver: Sleeping for " + EMAIL_CHECK_PERIOD); //$NON-NLS-1$
-					sleep(1000 * EMAIL_CHECK_PERIOD);
+					LOGGER.finest("Archiver: Sleeping for " + CHECK_PERIOD); //$NON-NLS-1$
+					sleep(1000 * CHECK_PERIOD);
 					
 				} catch (InterruptedException e) {
 					
@@ -207,95 +173,6 @@ public class EmailArchiver extends Thread implements EmailReader {
 			text = "S:" + subject + "\n" + text; //$NON-NLS-1$ //$NON-NLS-2$
 			
 		return text;
-		
-	}
-	
-	/**
-	 * Writes the message content to a text file in the ARCHIVE location
-	 * @param fileID name of file and message record id it relates to
-	 * @param messageContent Content to go in the file
-	 * @return true if we succeeded in writing the file
-	 */
-	private boolean writeMessageToArchive(int fileID, String messageContent) {
-		
-		boolean created = false;
-		
-		String path = ARCHIVE_PATH + System.getProperty("file.separator") +  //$NON-NLS-1$
-				fileID;
-		
-		File temp = new File(path);
-		
-		try {
-			if(!temp.exists() && temp.createNewFile()){
-				
-				try{
-					
-					PrintWriter writer = new PrintWriter(path, "UTF-8"); //$NON-NLS-1$
-					writer.print(messageContent);
-					writer.close();
-					
-					created = true;
-					
-				}catch(UnsupportedEncodingException e){
-					
-					e.printStackTrace();
-					LOGGER.severe("Can't encode UTF8 file for " + path); //$NON-NLS-1$
-					
-				}catch(FileNotFoundException e){
-					
-					e.printStackTrace();
-					LOGGER.severe("Can't write file " + path); //$NON-NLS-1$
-					
-				}
-				
-			}
-		} catch (IOException e) {
-			
-			e.printStackTrace();
-			LOGGER.severe("Can't create new file " + path); //$NON-NLS-1$
-			
-		}
-		
-		return created;
-		
-	}
-	
-	/**
-	 * Deletes a message from the message table.
-	 * Called when writeToArchive() fails so we don't have a
-	 * message in the table that doesn't exist in archive
-	 * @param id id to delete
-	 */
-	private void removeMessageFromDatabase(int id) {
-		
-		LOGGER.info("Deleting message ID: " + id); //$NON-NLS-1$
-		String SQL = "DELETE FROM `messages` WHERE `id` = " + id; //$NON-NLS-1$
-		
-		Connection mysql = database.getConnection();
-		Statement deleteMessage = null;
-		
-		try{
-			
-			deleteMessage = mysql.createStatement();
-			
-			//Execute it
-			deleteMessage.executeUpdate(SQL);
-			
-		}catch(SQLException e){
-			
-			e.printStackTrace();
-			LOGGER.severe("SQL Error while inserting message"); //$NON-NLS-1$
-			
-		}finally{
-			
-			if(deleteMessage != null){//Close Statement
-            	try{
-            		deleteMessage.close();
-            		deleteMessage = null;
-            	}catch(Exception e){}
-            }
-        	
-		}
 		
 	}
 	
@@ -441,41 +318,12 @@ public class EmailArchiver extends Thread implements EmailReader {
 			
 		}finally{
 			
-			if(insertIDs != null){
-            	try{
-            		insertIDs.close();
-            		insertIDs = null;
-            	}catch(Exception e){}
-            }
-            	
-            if(insertMessage != null){//Close Statement
-            	try{
-            		insertMessage.close();
-            		insertMessage = null;
-            	}catch(Exception e){}
-            }
+			close(insertMessage, insertIDs);
         	
 		}
 		
 		return success;
 		
 	}
-
-	/**
-	 * Uses the to address to figure out who we should assign this message
-	 * @param to email address that this message was sent to
-	 * @return -1 = use normal NULL value, else use the id to assign
-	 */
-	private int getAssignedUserID(String to) {
-		
-		/* TODO Use the to address to decide if this should be assigned
-		 * to another user or a show
-		 * 
-		 * Create table for to address ==> user
-		 */
-		
-		return -1;
-		
-	}
-
+	
 }
