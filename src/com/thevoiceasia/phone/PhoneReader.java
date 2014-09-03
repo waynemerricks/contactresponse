@@ -283,35 +283,6 @@ public class PhoneReader extends MessageArchiver {
 	}
 	
 	/**
-	 * Helper method to close statements and resultsets
-	 * @param statement
-	 * @param results
-	 */
-	private void close(Statement statement, ResultSet results){
-		
-		if(results != null){
-			
-			try{
-				results.close();
-			}catch(Exception e){}
-			
-			results = null;
-			
-		}
-
-		if(statement != null){
-			
-			try{
-				statement.close();
-			}catch(Exception e){}
-			
-			statement = null;
-			
-		}
-		
-	}
-	
-	/**
 	 * Get Messages from the phone database
 	 */
 	public void getMessages() {
@@ -546,6 +517,9 @@ public class PhoneReader extends MessageArchiver {
 				
 			}
 			
+			//Preview can be null if we get no subject or body (does happen)
+			if(preview == null)
+				preview = ""; //$NON-NLS-1$
 			insertMessage.setString(4, preview);
 			
 			boolean inserted = insertMessage.execute();
