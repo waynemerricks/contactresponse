@@ -94,7 +94,7 @@
 
     $delegate = FALSE;
 
-    if(hasPermission('CAN_DELEGATE_ALL'))
+    if(hasPermission('CAN_DELEGATE_GROUP'))
       $delegate = TRUE;
 
     return $delegate;
@@ -184,35 +184,33 @@
     $result->close();
     $rootGroup = NULL;
 
-    foreach($userGroups as $id => $parent){
+    foreach($userGroups as $group){
 
-      if(in_array($id, $member)){
-
-        $inParent = TRUE;
-
-        while($inParent == TRUE){
-
-          if(in_array($parent, $member))
-            $parent = $userGroups[$parent];
-          else{
-
-            $rootGroup = $parent;
-            $inParent = FALSE;
-
-          }
-
-        }
-
+      //$array ($id => $parent)
+      foreach($group as $id => $parent){
+      	
+      	if(in_array($id, $member)){
+      	
+      		$inParent = TRUE;
+      		$rootGroup = $id;
+      		
+      		while($inParent == TRUE){
+      	
+      			if(in_array($parent, $member)){
+      				$rootGroup = $parent;
+      				$parent = $userGroups[$parent];
+      			}else
+      			  	$inParent = FALSE;
+      			
+      		}
+      	
+      	}
+      	
       }
-
+      
     }
 
-    $lastKey = NULL;
-
-    foreach($rootGroup as $key => $value)
-      $lastKey = $key;
-
-    return $rootGroup[$lastKey];
+    return $rootGroup;
 
   }
 
@@ -323,11 +321,11 @@
       $userGroups = getUserGroups($mysqli);
       $rootGroup = getHighestGroups($mysqli, $userGroups);
 
-      if(canDelegateGroup() && !canDelegateUnderlings())
+      if(canDelegateGroup() && !canDelegateUnderlings())//if group but not underlings, get group members
         $members = getGroupMembers($rootGroup, $mysqli);
-      else if(!canDelegateGroup() && canDelegateUnderlings())
+      else if(!canDelegateGroup() && canDelegateUnderlings())//if not group but underlings get underlings
         $members = getGroupMembersFromRoot($rootGroup, $userGroups, $mysqli);
-      else if(canDelegateGroup() && canDelegateUnderlings()){
+      else if(canDelegateGroup() && canDelegateUnderlings()){//if both get both and merge
 
         $rootDelegates = getGroupMembers($rootGroup, $mysqli);
         $childDelegates = getGroupMembersFromRoot($rootGroup, $userGroups, $mysqli);
@@ -348,6 +346,7 @@
             $first = FALSE;
           }else
             $ids .= ',' . $user;
+          
         }
 
         $sql = 'SELECT `id`, `name` FROM `users` WHERE `id` IN (' . $ids .
