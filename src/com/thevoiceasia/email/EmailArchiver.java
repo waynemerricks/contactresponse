@@ -241,6 +241,8 @@ public class EmailArchiver extends MessageArchiver implements EmailReader {
 		if(!isDatabaseConnected())
 			connectToDB();
 		
+		readDatabaseValues();//Grab routing and sms to address from DB
+		
 		Contact contact = new Contact(database, from, name, sms);
 		
 		if(subject.trim().endsWith("form submitted")) //$NON-NLS-1$
@@ -258,7 +260,7 @@ public class EmailArchiver extends MessageArchiver implements EmailReader {
 		String SQL = "INSERT INTO `messages` (`owner`, `type`, `direction`, " + //$NON-NLS-1$
 				"`preview`) VALUES (?, ?, ?, ?)"; //$NON-NLS-1$
 		
-		int assignedUserID = getAssignedUserID(to, false);
+		int assignedUserID = getAssignedUserID(contact, to, body, false);
 		
 		if(assignedUserID != -1)
 			SQL = "INSERT INTO `messages` (`owner`, `type`, `direction`, " + //$NON-NLS-1$

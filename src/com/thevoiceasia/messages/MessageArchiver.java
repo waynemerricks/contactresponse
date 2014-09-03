@@ -9,9 +9,11 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.thevoiceasia.contact.Contact;
 import com.thevoiceasia.database.DatabaseHelper;
 
 public class MessageArchiver extends Thread{
@@ -22,6 +24,7 @@ public class MessageArchiver extends Thread{
 	private boolean connected = false;
 	protected DatabaseHelper database = null;
 	protected String ARCHIVE_PATH = null;
+	private ArrayList<RoutingPriority> routing = new ArrayList<RoutingPriority>();
 	
 	protected static final Logger LOGGER = Logger.getLogger("com.thevoiceasia"); //$NON-NLS-1$
 	protected static final Level LEVEL = Level.INFO;//Logging level of this class
@@ -38,37 +41,6 @@ public class MessageArchiver extends Thread{
 		
 		if(directory.exists() && directory.isDirectory() && directory.canWrite())
 			archiveValid = true;
-	
-		connectToDB();
-		
-		Statement getSMS = null;
-		ResultSet results = null;
-		
-		try{
-			
-			getSMS = database.getConnection().createStatement();
-			getSMS.execute("SELECT `value` FROM `settings` WHERE `name` = " + //$NON-NLS-1$
-					"'smsEmail'"); //$NON-NLS-1$
-			results = getSMS.getResultSet();
-			
-			while(results.next()){
-				
-				smsEmail = results.getString("value"); //$NON-NLS-1$
-				
-			}
-			
-		}catch(SQLException e){
-			
-			LOGGER.severe("Error reading setting for SMS Address"); //$NON-NLS-1$
-			e.printStackTrace();
-			
-		}finally{
-			
-			close(getSMS, results);
-			
-		}
-		
-		disconnectFromDB();
 		
 	}
 	
@@ -231,35 +203,61 @@ public class MessageArchiver extends Thread{
 	}
 
 	/**
-	 * Uses the to address to figure out who we should assign this message
-	 * @param to email address that this message was sent to
-	 * @param from who it came from in case we 
+	 * Reads smsEmail settings and priorities from DB
+	 */
+	protected void readDatabaseValues(){
+		
+		Statement getSMS = null;
+		ResultSet results = null;
+		
+		try{
+			
+			getSMS = database.getConnection().createStatement();
+			getSMS.execute("SELECT `value` FROM `settings` WHERE `name` = " + //$NON-NLS-1$
+					"'smsEmail'"); //$NON-NLS-1$
+			results = getSMS.getResultSet();
+			
+			while(results.next()){
+				
+				smsEmail = results.getString("value"); //$NON-NLS-1$
+				
+			}
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Error reading setting for SMS Address"); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(getSMS, results);
+			
+		}
+		
+		getAssignedUserList();
+		
+	}
+	
+	/**
+	 * Figure out who we should assign this message
+	 * @param to email address that this message was sent to or phone topic
 	 * @param body body of the email to check for keywords
 	 * @param phone true if this is a phone number and not an email address
 	 * @return -1 = use normal NULL value, else use the id to assign
 	 */
-	protected int getAssignedUserID(String to, String from, String body,  
+	protected int getAssignedUserID(Contact contact, String to, String body, 
 			boolean phone) {
 		
-		/* TODO Use the to address to decide if this should be assigned
-		 * to another user or a show
-		 * 
-		 * Create table for to address ==> user
-		 */
 		int assignTo = -1;
 		
 		if(to != null){
-			
-			if(phone || to.equalsIgnoreCase(smsEmail)){//Phone Number
-				
-				//Need to assign by Special Groups
-				
-			}else{//Email
-				
-				
-				
-				
-			}
+		
+			if(phone)
+				assignTo = getHighestPriorityRoute("P", body, to).sendToUser; //$NON-NLS-1$
+			else if(to.equals(smsEmail))
+				assignTo = getHighestPriorityRoute("S", body, to).sendToUser; //$NON-NLS-1$
+			else
+				assignTo = getHighestPriorityRoute("E", body, to).sendToUser; //$NON-NLS-1$
 			
 		}
 		
@@ -267,9 +265,74 @@ public class MessageArchiver extends Thread{
 		
 	}
 	
-	protected void getAssignedUserList() {
-		// TODO Auto-generated method stub
+	/**
+	 * Supplement to getAssignedUserID loops through the RoutingPriorities array
+	 * and assigns the highest Route we have for this message type/content
+	 * @param type
+	 * @param searchContent
+	 * @param searchAddress
+	 * @return
+	 */
+	private RoutingPriority getHighestPriorityRoute(String type, String searchContent, 
+			String searchAddress){
 		
+		int highest = 100;
+		RoutingPriority rp = null;
+		
+		for(int i = 0; i < routing.size(); i++){
+			
+			if(routing.get(i).appliesToType(type)){
+				
+				if((routing.get(i).isKeyWord() && routing.get(i).hasKeyWord(searchContent))
+						|| (!routing.get(i).isKeyWord() && routing.get(i).appliesToAddress(searchAddress))){
+				
+					if(highest > routing.get(i).priority){
+						
+						highest = routing.get(i).priority;
+						rp = routing.get(i);
+						
+					}
+					
+				}
+				
+			}
+			
+		}
+		
+		return rp;
+		
+	}
+	
+	/**
+	 * Gets the RoutingPriority information from the DB
+	 */
+	protected void getAssignedUserList() {
+		
+		Statement getPriorities = null;
+		ResultSet results = null;
+		
+		try{
+			
+			getPriorities = database.getConnection().createStatement();
+			getPriorities.execute("SELECT * FROM `message_priorities`" + //$NON-NLS-1$
+					" ORDER BY `priority` ASC"); //$NON-NLS-1$
+			results = getPriorities.getResultSet();
+			
+			while(results.next())
+				routing.add(new RoutingPriority(results.getString("type"), //$NON-NLS-1$
+						results.getString("term"), results.getInt("user_id"),  //$NON-NLS-1$//$NON-NLS-2$
+						results.getInt("priority"))); //$NON-NLS-1$
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Error reading routing priorities"); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(getPriorities, results);
+			
+		}
 		
 	}
 	
