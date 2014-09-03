@@ -20,7 +20,7 @@ public class Contact {
 
 	private String name = null, email = null, gender = null, phoneNumber = null;//,
 			//language = null, photo = null, status = null, autoReply = null;
-	private int id = -1;//, languageID = -1, assignedUser = -1;
+	private int id = -1, assignedUser = -1;//, languageID = -1, 
 	private long updated = -1;//, created = -1; 
 	private boolean sms = false;
 	private HashMap<String, String> custom = new HashMap<String, String>();
@@ -175,7 +175,7 @@ public class Contact {
 					//photo = contact.getString("photo"); //$NON-NLS-1$
 					
 					//Assigned User
-					//assignedUser = contact.getInt("assigned_user_id"); //$NON-NLS-1$
+					assignedUser = contact.getInt("assigned_user_id"); //$NON-NLS-1$
 					
 					//Created
 					//created = contact.getLong("created"); //$NON-NLS-1$
@@ -710,6 +710,16 @@ public class Contact {
 		
 	}
 
+	/**
+	 * Returns the assigned user for this contact
+	 * @return
+	 */
+	public int getAssignedUser(){
+		
+		return assignedUser;
+		
+	}
+	
 	/**
 	 * Returns the record id of this contact in the contacts table
 	 * @return
