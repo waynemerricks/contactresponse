@@ -17,7 +17,9 @@ import com.thevoiceasia.database.DatabaseHelper;
 public class MessageArchiver extends Thread{
 
 	//Variables accessible to any class that extends this
+	private String smsEmail = null;
 	protected boolean archiveValid = false;
+	private boolean connected = false;
 	protected DatabaseHelper database = null;
 	protected String ARCHIVE_PATH = null;
 	
@@ -36,6 +38,37 @@ public class MessageArchiver extends Thread{
 		
 		if(directory.exists() && directory.isDirectory() && directory.canWrite())
 			archiveValid = true;
+	
+		connectToDB();
+		
+		Statement getSMS = null;
+		ResultSet results = null;
+		
+		try{
+			
+			getSMS = database.getConnection().createStatement();
+			getSMS.execute("SELECT `value` FROM `settings` WHERE `name` = " + //$NON-NLS-1$
+					"'smsEmail'"); //$NON-NLS-1$
+			results = getSMS.getResultSet();
+			
+			while(results.next()){
+				
+				smsEmail = results.getString("value"); //$NON-NLS-1$
+				
+			}
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Error reading setting for SMS Address"); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(getSMS, results);
+			
+		}
+		
+		disconnectFromDB();
 		
 	}
 	
@@ -56,6 +89,7 @@ public class MessageArchiver extends Thread{
 	public void connectToDB(){
 		
 		database.connect();
+		connected = true;
 		
 	}
 	
@@ -65,6 +99,16 @@ public class MessageArchiver extends Thread{
 	public void disconnectFromDB(){
 		
 		database.disconnect();
+		connected = false;
+		
+	}
+	
+	/**
+	 * Return if we're in connected or disconnected state
+	 */
+	public boolean isDatabaseConnected(){
+		
+		return connected;
 		
 	}
 	
@@ -189,17 +233,37 @@ public class MessageArchiver extends Thread{
 	/**
 	 * Uses the to address to figure out who we should assign this message
 	 * @param to email address that this message was sent to
+	 * @param from who it came from in case we 
+	 * @param body body of the email to check for keywords
+	 * @param phone true if this is a phone number and not an email address
 	 * @return -1 = use normal NULL value, else use the id to assign
 	 */
-	protected int getAssignedUserID(String to) {
+	protected int getAssignedUserID(String to, String from, String body,  
+			boolean phone) {
 		
 		/* TODO Use the to address to decide if this should be assigned
 		 * to another user or a show
 		 * 
 		 * Create table for to address ==> user
 		 */
+		int assignTo = -1;
 		
-		return -1;
+		if(to != null){
+			
+			if(phone || to.equalsIgnoreCase(smsEmail)){//Phone Number
+				
+				//Need to assign by Special Groups
+				
+			}else{//Email
+				
+				
+				
+				
+			}
+			
+		}
+		
+		return assignTo;
 		
 	}
 	
