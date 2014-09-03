@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.logging.Level;
@@ -153,6 +154,58 @@ public class MessageArchiver extends Thread{
             }
         	
 		}
+		
+	}
+	
+	/**
+	 * Helper method to close statements and resultsets
+	 * @param statement
+	 * @param results
+	 */
+	protected void close(Statement statement, ResultSet results){
+		
+		if(results != null){
+			
+			try{
+				results.close();
+			}catch(Exception e){}
+			
+			results = null;
+			
+		}
+
+		if(statement != null){
+			
+			try{
+				statement.close();
+			}catch(Exception e){}
+			
+			statement = null;
+			
+		}
+		
+	}
+
+	/**
+	 * Uses the to address to figure out who we should assign this message
+	 * @param to email address that this message was sent to
+	 * @return -1 = use normal NULL value, else use the id to assign
+	 */
+	protected int getAssignedUserID(String to) {
+		
+		/* TODO Use the to address to decide if this should be assigned
+		 * to another user or a show
+		 * 
+		 * Create table for to address ==> user
+		 */
+		
+		return -1;
+		
+	}
+	
+	protected void getAssignedUserList() {
+		// TODO Auto-generated method stub
+		
 		
 	}
 	
