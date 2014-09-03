@@ -111,10 +111,9 @@ public class EmailArchiver extends MessageArchiver implements EmailReader {
 				
 				try {
 					
-					archiver.connectToDB();
-					archiver.getAssignedUserList();
 					archiver.getEmails();
-					archiver.disconnectFromDB();
+					if(archiver.isDatabaseConnected())
+						archiver.disconnectFromDB();
 					
 					LOGGER.finest("Archiver: Sleeping for " + CHECK_PERIOD); //$NON-NLS-1$
 					sleep(1000 * CHECK_PERIOD);
@@ -239,6 +238,9 @@ public class EmailArchiver extends MessageArchiver implements EmailReader {
 		body = stripExcessiveNewLines(body);
 		subject = stripExcessiveNewLines(subject);
 		
+		if(!isDatabaseConnected())
+			connectToDB();
+		
 		Contact contact = new Contact(database, from, name, sms);
 		
 		if(subject.trim().endsWith("form submitted")) //$NON-NLS-1$
@@ -256,7 +258,7 @@ public class EmailArchiver extends MessageArchiver implements EmailReader {
 		String SQL = "INSERT INTO `messages` (`owner`, `type`, `direction`, " + //$NON-NLS-1$
 				"`preview`) VALUES (?, ?, ?, ?)"; //$NON-NLS-1$
 		
-		int assignedUserID = getAssignedUserID(to);
+		int assignedUserID = getAssignedUserID(to, false);
 		
 		if(assignedUserID != -1)
 			SQL = "INSERT INTO `messages` (`owner`, `type`, `direction`, " + //$NON-NLS-1$
