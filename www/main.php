@@ -13,6 +13,8 @@
   $autoReplies = getAutoReplyTypes($mysqli);
   $contactsPending = getInbox(getUserId(), isDefaultHelper(), $mysqli);
 
+  $lastMessageID = -1;
+
 ?>
 <html>
   <head>
@@ -208,8 +210,6 @@
           <tr id="nomessages"><td colspan="4">There are no messages in your inbox</td></tr>
         <?php
           } else {
-
-            $lastMessageID = -1;
 
             for($i = 0; $i < sizeof($contactsPending); $i++){ 
 
