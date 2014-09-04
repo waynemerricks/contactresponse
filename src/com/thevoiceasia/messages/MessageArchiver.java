@@ -252,13 +252,23 @@ public class MessageArchiver extends Thread{
 		
 		if(to != null){
 		
-			if(phone)
-				assignTo = getHighestPriorityRoute("P", body, to).sendToUser; //$NON-NLS-1$
-			else if(to.equals(smsEmail))
-				assignTo = getHighestPriorityRoute("S", body, to).sendToUser; //$NON-NLS-1$
-			else
-				assignTo = getHighestPriorityRoute("E", body, to).sendToUser; //$NON-NLS-1$
+			String type = "E"; //$NON-NLS-1$
 			
+			if(phone)
+				type = "P"; //$NON-NLS-1$
+			else if(to.equals(smsEmail))
+				type = "S"; //$NON-NLS-1$
+			
+			RoutingPriority rp = getHighestPriorityRoute(type, body, to);
+			
+			if(rp != null){//null = no matches should we time lookup shows?
+				
+				if(rp.useContactDefault())
+					assignTo = contact.getAssignedUser();
+				else
+					assignTo = rp.sendToUser;
+				
+			}
 		}
 		
 		return assignTo;
