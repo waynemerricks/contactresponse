@@ -75,6 +75,22 @@ public class RoutingPriority {
 	}
 	
 	/**
+	 * Returns true if this is a contact type priority 
+	 * e.g. true = use the contact's helper to assign this
+	 * @return
+	 */
+	public boolean useContactDefault(){
+		
+		boolean contact = false;
+		
+		if(type.equals("C")) //$NON-NLS-1$
+			contact = true;
+		
+		return contact;
+		
+	}
+	
+	/**
 	 * true if this object is a message body keyword e.g. DVD
 	 * @return
 	 */
@@ -122,8 +138,17 @@ public class RoutingPriority {
 			
 			while(!matches && i < termVariations.length){
 				
-				if(checkMe.contains(termVariations[i]))
+				if(checkMe.startsWith(termVariations[i]))
 					matches = true;
+				else if(checkMe.startsWith("S:") && checkMe.contains("\n")){  //$NON-NLS-1$//$NON-NLS-2$
+					
+					String[] temp = checkMe.split("\n");//$NON-NLS-1$
+					
+					for(int j = 1; j < temp.length; j++)
+						if(temp[j].trim().length() > 0 && temp[j].trim().startsWith(termVariations[i]))
+							matches = true;
+					
+				}
 				
 				i++;
 				
