@@ -1,6 +1,5 @@
 package com.thevoiceasia.email;
 
-import java.io.File;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -11,15 +10,13 @@ import java.util.Date;
 import java.util.logging.FileHandler;
 
 import com.thevoiceasia.contact.Contact;
-import com.thevoiceasia.database.DatabaseHelper;
 import com.thevoiceasia.html.HTML2Text;
 import com.thevoiceasia.messages.MessageArchiver;
 import com.thevoiceasia.sms.XpressMS;
 
 public class EmailArchiver extends MessageArchiver implements EmailReader {
 
-	private DatabaseHelper database = null;
-	private String ARCHIVE_PATH = null, mailHost = null, mailUser = null, mailPass = null;
+	private String mailHost = null, mailUser = null, mailPass = null;
 		
 	/**
 	 * Receives Email from the given email inbox (no subfolders) and archives
@@ -42,14 +39,6 @@ public class EmailArchiver extends MessageArchiver implements EmailReader {
 		this.mailHost = mailHost;
 		this.mailUser = mailUser;
 		this.mailPass = mailPass;
-		
-		database = new DatabaseHelper(dbHost, dbBase, dbUser, dbPass);
-		ARCHIVE_PATH = emailStorePath;
-		
-		File directory = new File(ARCHIVE_PATH);
-		
-		if(directory.exists() && directory.isDirectory() && directory.canWrite())
-			archiveValid = true;
 		
 		setupLogging();
 		
@@ -238,10 +227,12 @@ public class EmailArchiver extends MessageArchiver implements EmailReader {
 		body = stripExcessiveNewLines(body);
 		subject = stripExcessiveNewLines(subject);
 		
-		if(!isDatabaseConnected())
+		if(!isDatabaseConnected()){
+			
 			connectToDB();
-		
-		readDatabaseValues();//Grab routing and sms to address from DB
+			readDatabaseValues();//Grab routing and sms to address from DB
+			
+		}
 		
 		Contact contact = new Contact(database, from, name, sms);
 		
@@ -264,7 +255,7 @@ public class EmailArchiver extends MessageArchiver implements EmailReader {
 		
 		if(assignedUserID != -1)
 			SQL = "INSERT INTO `messages` (`owner`, `type`, `direction`, " + //$NON-NLS-1$
-					"`preview`, `assigned_user_id`) VALUES (?, ?, ?, ?, ?)"; //$NON-NLS-1$
+					"`preview`, `assigned_user`) VALUES (?, ?, ?, ?, ?)"; //$NON-NLS-1$
 		
 		Connection mysql = database.getConnection();
 		PreparedStatement insertMessage = null;
