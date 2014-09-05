@@ -96,6 +96,8 @@ public class User {
 			if(rows > 0)
 				success = true;
 			
+			LOGGER.info("Added Contact to User " + userId); //$NON-NLS-1$
+			
 		}catch(SQLException e){
 			
 			LOGGER.severe("Error while updating current contacts for user " +  //$NON-NLS-1$
