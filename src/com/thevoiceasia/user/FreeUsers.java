@@ -24,6 +24,7 @@ public class FreeUsers {
 	public FreeUsers(DatabaseHelper database){
 		
 		this.database = database;
+		users = new ArrayList<User>();
 		populateUsers();
 		
 	}
@@ -55,7 +56,7 @@ public class FreeUsers {
 	/**
 	 * Get the next user who can get new contacts (e.g. the ones who haven't 
 	 * reached max contacts yet)
-	 * @return User or null if there are no more users who can get new contacts
+	 * @return User or -1 if there are no more users who can get new contacts
 	 */
 	public int getNextAvailableUser(){
 		
