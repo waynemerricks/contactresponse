@@ -20,7 +20,7 @@ public class Contact {
 
 	private String name = null, email = null, gender = null, phoneNumber = null;//,
 			//language = null, photo = null, status = null, autoReply = null;
-	private int id = -1, assignedUser = -1;//, languageID = -1, 
+	private int id = -1, assignedUser = -1, nextFreeUser = -1;//, languageID = -1, 
 	private long updated = -1;//, created = -1; 
 	private boolean sms = false;
 	private HashMap<String, String> custom = new HashMap<String, String>();
@@ -50,13 +50,14 @@ public class Contact {
 	 * @param sms true if this is an SMS message not an email
 	 */
 	public Contact(DatabaseHelper database, String email, String name,
-			boolean sms) {
+			boolean sms, int assignToUser) {
 		
 		LOGGER.setLevel(LEVEL);
 		
 		this.name = name;
 		this.sms = sms;
 		this.database = database;
+		this.nextFreeUser = assignToUser;
 		
 		/* Search via email or sms, don't use name as identifier as we have no 
 		 * way to tell which Mr Singh is this Mr Singh.
@@ -367,23 +368,32 @@ public class Contact {
 	 */
 	private boolean createNewContact() {
 		
-		String SQL = "INSERT INTO `contacts` (`email`) VALUES (?)"; //$NON-NLS-1$
-		String[] values = {email};
+		String freeUser = ""; //$NON-NLS-1$
+		
+		if(nextFreeUser != -1)
+			freeUser = "" + nextFreeUser; //$NON-NLS-1$
+		
+		String SQL = "INSERT INTO `contacts` (`email`, `assigned_user_id`) " + //$NON-NLS-1$
+				"VALUES (?, ?)"; //$NON-NLS-1$
+		String[] values = {email, freeUser}; 
 		
 		if(name != null && !sms){
 			
-			SQL = "INSERT INTO `contacts` (`email`, `name`) VALUES (?, ?)"; //$NON-NLS-1$
-			values = new String[]{email, name};
+			SQL = "INSERT INTO `contacts` (`email`, `name`, " + //$NON-NLS-1$
+					"`assigned_user_id`) VALUES (?, ?, ?)"; //$NON-NLS-1$
+			values = new String[]{email, name, freeUser};
 			
 		}else if(name == null && sms){
 			
-			SQL = "INSERT INTO `contacts` (`phone`) VALUES (?)"; //$NON-NLS-1$
-			values = new String[]{phoneNumber};
+			SQL = "INSERT INTO `contacts` (`phone`, `assigned_user_id`) " + //$NON-NLS-1$
+					"VALUES (?, ?)"; //$NON-NLS-1$
+			values = new String[]{phoneNumber, freeUser};
 			
 		}else if(name != null && sms){ //I think name will always be null for an SMS but just in case
 		
-			SQL = "INSERT INTO `contacts` (`phone`, `name`) VALUES (?, ?)"; //$NON-NLS-1$
-			values = new String[]{phoneNumber, name};
+			SQL = "INSERT INTO `contacts` (`phone`, `name`, " + //$NON-NLS-1$
+					"`assigned_user_id`) VALUES (?, ?, ?)"; //$NON-NLS-1$
+			values = new String[]{phoneNumber, name, freeUser};
 			
 		}
 			
