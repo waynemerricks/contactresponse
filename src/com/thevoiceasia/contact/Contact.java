@@ -15,15 +15,18 @@ import java.util.logging.Logger;
 
 import com.thevoiceasia.database.DatabaseHelper;
 import com.thevoiceasia.database.FieldMap;
+import com.thevoiceasia.user.FreeUsers;
 
 public class Contact {
 
 	private String name = null, email = null, gender = null, phoneNumber = null;//,
 			//language = null, photo = null, status = null, autoReply = null;
-	private int id = -1, assignedUser = -1, nextFreeUser = -1;//, languageID = -1, 
+	private int id = -1, assignedUser = -1;//, languageID = -1, 
 	private long updated = -1;//, created = -1; 
 	private boolean sms = false;
 	private HashMap<String, String> custom = new HashMap<String, String>();
+	private FreeUsers users = null;
+	private int currentFreeUser = -1;
 	
 	private DatabaseHelper database = null;
 
@@ -50,14 +53,14 @@ public class Contact {
 	 * @param sms true if this is an SMS message not an email
 	 */
 	public Contact(DatabaseHelper database, String email, String name,
-			boolean sms, int assignToUser) {
+			boolean sms, FreeUsers users) {
 		
 		LOGGER.setLevel(LEVEL);
 		
 		this.name = name;
 		this.sms = sms;
 		this.database = database;
-		this.nextFreeUser = assignToUser;
+		this.users = users;
 		
 		/* Search via email or sms, don't use name as identifier as we have no 
 		 * way to tell which Mr Singh is this Mr Singh.
@@ -178,6 +181,15 @@ public class Contact {
 					//Assigned User
 					assignedUser = contact.getInt("assigned_user_id"); //$NON-NLS-1$
 					
+					int nextFreeUser = users.getNextAvailableUser();
+					
+					if(assignedUser == 0 && nextFreeUser != -1){//Update assignedUser						
+						assignedUser = nextFreeUser;
+						currentFreeUser = nextFreeUser;
+						updateAssignedUser();
+						
+					}
+					
 					//Created
 					//created = contact.getLong("created"); //$NON-NLS-1$
 					
@@ -215,24 +227,45 @@ public class Contact {
 	}
 	
 	/**
+	 * Updates the assigned user of this contact and adds one to the contact
+	 * count of the assigned user
+	 */
+	private void updateAssignedUser() {
+		
+		LOGGER.info("Updating assigned user of " + id + " to " + assignedUser);  //$NON-NLS-1$//$NON-NLS-2$
+		if(updateField("assigned_user_id", "" + assignedUser))  //$NON-NLS-1$//$NON-NLS-2$
+			users.addContact(currentFreeUser);
+		
+	}
+
+	/**
 	 * Updates this contacts email in the DB with the one the object holds
 	 */
 	private void updateEmail(){
+		
+		LOGGER.finer("Updating email of contact " + id + " to " + email); //$NON-NLS-1$ //$NON-NLS-2$
 		updateField("email", email); //$NON-NLS-1$
+		
 	}
 	
 	/**
 	 * Updates this contacts phone in the DB with the one the object holds
 	 */
 	private void updatePhone(){
+		
+		LOGGER.finer("Updating phone of contact " + id + " to " + phoneNumber); //$NON-NLS-1$ //$NON-NLS-2$
 		updateField("phone", phoneNumber); //$NON-NLS-1$
+		
 	}
 	
 	/**
 	 * Updates this contacts name in the DB with the one the object holds
 	 */
 	private void updateName(){
+		
+		LOGGER.finer("Updating name of contact " + id + " to " + name); //$NON-NLS-1$ //$NON-NLS-2$
 		updateField("name", name); //$NON-NLS-1$
+		
 	}
 	
 	/**
@@ -344,6 +377,9 @@ public class Contact {
 				
 				inserted = true;
 				
+				if(currentFreeUser != -1)
+					users.addContact(currentFreeUser);
+				
 			}
 			
 		}catch(SQLException e){
@@ -370,8 +406,14 @@ public class Contact {
 		
 		String freeUser = ""; //$NON-NLS-1$
 		
-		if(nextFreeUser != -1)
+		int nextFreeUser = users.getNextAvailableUser();
+		
+		if(nextFreeUser != -1){
+		
 			freeUser = "" + nextFreeUser; //$NON-NLS-1$
+			currentFreeUser = nextFreeUser;
+			
+		}
 		
 		String SQL = "INSERT INTO `contacts` (`email`, `assigned_user_id`) " + //$NON-NLS-1$
 				"VALUES (?, ?)"; //$NON-NLS-1$
