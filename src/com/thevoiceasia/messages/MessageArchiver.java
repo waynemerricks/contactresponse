@@ -55,12 +55,29 @@ public class MessageArchiver extends Thread{
 		
 	}
 	
+	/**
+	 * Reads Users that are active without max contacts from DB
+	 */
 	protected void initialiseFreeUsers(){
 		
 		users = new FreeUsers(database);
 		
 	}
 	
+	/**
+	 * Returns the FreeUsers object of this class
+	 * @return
+	 */
+	protected FreeUsers getFreeUsers(){
+		
+		return users;
+		
+	}
+	
+	/**
+	 * Returns the next available user ID
+	 * @return null if no usable ID
+	 */
 	protected int getNextFreeUser(){
 		
 		return users.getNextAvailableUser();
