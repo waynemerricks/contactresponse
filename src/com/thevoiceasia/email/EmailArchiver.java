@@ -17,7 +17,7 @@ import com.thevoiceasia.sms.XpressMS;
 public class EmailArchiver extends MessageArchiver implements EmailReader {
 
 	private String mailHost = null, mailUser = null, mailPass = null;
-		
+	
 	/**
 	 * Receives Email from the given email inbox (no subfolders) and archives
 	 * it in the database and emailStorePath
@@ -231,10 +231,11 @@ public class EmailArchiver extends MessageArchiver implements EmailReader {
 			
 			connectToDB();
 			readDatabaseValues();//Grab routing and sms to address from DB
+			initialiseFreeUsers();
 			
 		}
 		
-		Contact contact = new Contact(database, from, name, sms);
+		Contact contact = new Contact(database, from, name, sms, getNextFreeUser());
 		
 		if(subject.trim().endsWith("form submitted")) //$NON-NLS-1$
 			contact.updateWithWebForm(body);

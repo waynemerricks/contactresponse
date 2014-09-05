@@ -15,6 +15,7 @@ import java.util.logging.Logger;
 
 import com.thevoiceasia.contact.Contact;
 import com.thevoiceasia.database.DatabaseHelper;
+import com.thevoiceasia.user.FreeUsers;
 
 public class MessageArchiver extends Thread{
 
@@ -25,11 +26,21 @@ public class MessageArchiver extends Thread{
 	protected DatabaseHelper database = null;
 	protected String ARCHIVE_PATH = null;
 	private ArrayList<RoutingPriority> routing = new ArrayList<RoutingPriority>();
+	private FreeUsers users = null;
 	
 	protected static final Logger LOGGER = Logger.getLogger("com.thevoiceasia"); //$NON-NLS-1$
 	protected static final Level LEVEL = Level.INFO;//Logging level of this class
 	protected static final int CHECK_PERIOD = 60; //Time to check for emails in seconds
 	
+	/**
+	 * Creates an Archiver that pushes messages to the database
+	 * @param host Database Host ip/name
+	 * @param user User name to use
+	 * @param pass Password to use
+	 * @param dbase Database to use
+	 * @param archivePath path where body of message will be written in text 
+	 * files
+	 */
 	public MessageArchiver(String host, String user, 
 			String pass, String dbase, String archivePath){
 		
@@ -41,6 +52,18 @@ public class MessageArchiver extends Thread{
 		
 		if(directory.exists() && directory.isDirectory() && directory.canWrite())
 			archiveValid = true;
+		
+	}
+	
+	protected void initialiseFreeUsers(){
+		
+		users = new FreeUsers(database);
+		
+	}
+	
+	protected int getNextFreeUser(){
+		
+		return users.getNextAvailableUser();
 		
 	}
 	
@@ -269,6 +292,7 @@ public class MessageArchiver extends Thread{
 					assignTo = rp.sendToUser;
 				
 			}
+			
 		}
 		
 		return assignTo;
