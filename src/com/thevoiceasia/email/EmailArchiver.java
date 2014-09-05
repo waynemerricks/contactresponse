@@ -235,7 +235,7 @@ public class EmailArchiver extends MessageArchiver implements EmailReader {
 			
 		}
 		
-		Contact contact = new Contact(database, from, name, sms, getNextFreeUser());
+		Contact contact = new Contact(database, from, name, sms, getFreeUsers());
 		
 		if(subject.trim().endsWith("form submitted")) //$NON-NLS-1$
 			contact.updateWithWebForm(body);
