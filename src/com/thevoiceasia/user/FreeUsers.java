@@ -97,9 +97,11 @@ public class FreeUsers {
 		Statement selectUsers = null;
 		ResultSet results = null;
 		
+		//Order by current ASC should help spread the load more evenly
 		String SQL = "SELECT `id`, `max_contacts`, `current_contacts` " + //$NON-NLS-1$
 				"FROM `users` WHERE `active` = 'Y' AND " + //$NON-NLS-1$
-				"`current_contacts` < `max_contacts`"; //$NON-NLS-1$
+				"`current_contacts` < `max_contacts` ORDER BY " + //$NON-NLS-1$
+				"`current_contacts` ASC"; //$NON-NLS-1$
 		
 		try{
 			
