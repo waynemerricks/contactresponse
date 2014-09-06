@@ -30,8 +30,39 @@ public class FreeUsers {
 	}
 	
 	/**
+	 * Checks whether the given user Id can accept more contacts
+	 * @param userId id to look for
+	 * @return true if yes, false if not
+	 */
+	public boolean hasFreeUser(int userId){
+		
+		boolean hasFree = false;
+		
+		int i = 0; 
+		boolean found = false;
+		
+		while(!found && i < users.size()){
+			
+			if(users.get(i).getId() == userId){
+				
+				found = true;
+				
+				if(users.get(i).canHaveMoreContacts())
+					hasFree = true;
+				
+			}
+			
+			i++;
+			
+		}
+		
+		return hasFree;
+		
+	}
+	
+	/**
 	 * Add a contact to the specified user (just increments the current count)
-	 * @param id
+	 * @param id id of user
 	 */
 	public void addContact(int id){
 		
