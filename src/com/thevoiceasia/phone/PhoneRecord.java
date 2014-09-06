@@ -11,7 +11,7 @@ public class PhoneRecord {
 	public String email = null,  gender = null, 
 			conversation = null, location = null;
 	private String address = null;
-	public int answeredBy = -1;
+	public int answeredBy = -1, assignedTo = -1;
 	public long time = -1l;
 	
 	private HashMap<String, String> stringFields = new HashMap<String, String>();
@@ -181,6 +181,16 @@ public class PhoneRecord {
 		}
 		
 		stringFields.put(key, value);
+		
+	}
+	
+	/**
+	 * Returns the call topic
+	 * @return
+	 */
+	public String getTopic(){
+		
+		return stringFields.get("topic"); //$NON-NLS-1$
 		
 	}
 	
