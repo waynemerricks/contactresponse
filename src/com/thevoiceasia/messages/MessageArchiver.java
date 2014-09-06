@@ -327,7 +327,7 @@ public class MessageArchiver extends Thread{
 	private RoutingPriority getHighestPriorityRoute(String type, 
 			String searchContent, String searchAddress){
 		
-		int highest = 100;
+		int highest = -1;
 		RoutingPriority rp = null;
 		
 		for(int i = 0; i < routing.size(); i++){
@@ -339,7 +339,7 @@ public class MessageArchiver extends Thread{
 						|| (!routing.get(i).isKeyWord() && 
 							routing.get(i).appliesToAddress(searchAddress))){
 				
-					if(highest > routing.get(i).priority){
+					if(highest > routing.get(i).priority || highest == -1){
 						
 						highest = routing.get(i).priority;
 						rp = routing.get(i);
