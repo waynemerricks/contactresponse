@@ -21,9 +21,9 @@ import com.thevoiceasia.messages.MessageArchiver;
 public class PhoneReader extends MessageArchiver {
 
 	private DatabaseHelper phoneDatabase = null;
-	private HashMap<String, Integer> userIds = new HashMap<String, Integer>();
-	private HashMap<String, FieldMap> customIds = 
-			new HashMap<String, FieldMap>();
+	private HashMap<String, Integer> userIds = null;//new HashMap<String, Integer>();
+	private HashMap<String, FieldMap> customIds = null;
+			//new HashMap<String, FieldMap>();
 	public static final String[] CUSTOM_FIELDS = {"language", "religion",  //$NON-NLS-1$ //$NON-NLS-2$
 		"journeyStage", "topic"}; //$NON-NLS-1$ //$NON-NLS-2$
 	public static final String[] STRING_FIELDS = {"caller_name", "number",   //$NON-NLS-1$//$NON-NLS-2$
@@ -44,9 +44,6 @@ public class PhoneReader extends MessageArchiver {
 				phonePass);
 		
 		database.connect();
-		
-		populateUserIDs();
-		populateCustomIDs();
 		
 		valueTables.put("s", "contact_values_small"); //$NON-NLS-1$ //$NON-NLS-2$
 		valueTables.put("m", "contact_values_medium");  //$NON-NLS-1$//$NON-NLS-2$
@@ -78,6 +75,7 @@ public class PhoneReader extends MessageArchiver {
 	 */
 	private void populateCustomIDs() {
 
+		customIds = new HashMap<String, FieldMap>();
 		String SQL = "SELECT * FROM `contact_fields`"; //$NON-NLS-1$
 		
 		Statement selectCustom = null;
@@ -124,6 +122,7 @@ public class PhoneReader extends MessageArchiver {
 	 */
 	private void populateUserIDs() {
 		
+		userIds = new HashMap<String, Integer>();
 		Statement selectUsers = null;
 		ResultSet results = null;
 		
@@ -163,21 +162,12 @@ public class PhoneReader extends MessageArchiver {
 		
 	}
 
-	/**
-	 * Connects to Phone database
-	 */
-	public void connectToPhoneDB(){
+	public void freeResources(){
 		
-		phoneDatabase.connect();
-		
-	}
-	
-	/**
-	 * Disconnects from Phone database
-	 */
-	public void disconnectFromPhoneDB(){
-		
-		phoneDatabase.disconnect();
+		disconnectFromDB();
+		userIds = null;//Want to be able to refresh user ids if we get new
+		//users in between runs
+		customIds = null;//Same deal as user Ids
 		
 	}
 	
@@ -207,7 +197,7 @@ public class PhoneReader extends MessageArchiver {
 				try {
 					
 					archiver.getMessages();
-					archiver.disconnectFromDB();
+					archiver.freeResources();
 					
 					LOGGER.finest("Phone Archiver: Sleeping for " + CHECK_PERIOD); //$NON-NLS-1$
 					sleep(1000 * CHECK_PERIOD);
@@ -220,7 +210,7 @@ public class PhoneReader extends MessageArchiver {
 					
 				} finally {
 					
-					archiver.disconnectFromDB();
+					archiver.freeResources();
 					
 				}
 				
@@ -431,6 +421,12 @@ public class PhoneReader extends MessageArchiver {
 				}
 				
 			}
+			
+			if(userIds == null)
+				populateUserIDs();
+			
+			if(customIds == null)
+				populateCustomIDs();
 			
 			if(userIds.containsKey(key))
 				pr.answeredBy = userIds.get(key);
