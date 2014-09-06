@@ -422,18 +422,20 @@ public class PhoneReader extends MessageArchiver {
 				
 			}
 			
-			if(userIds == null)
+			if(userIds == null){
+				
 				populateUserIDs();
-			
-			if(customIds == null)
 				populateCustomIDs();
+				initialiseFreeUsers();
+				
+			}
 			
 			if(userIds.containsKey(key))
 				pr.answeredBy = userIds.get(key);
 			else
 				pr.answeredBy = -1;
 			
-			
+			//"caller_name", "number", "conversation", "location", "topic"}; 
 			for(int i = 0; i < STRING_FIELDS.length; i++){
 				
 				String value = checkNull(results.getString(STRING_FIELDS[i]));
@@ -443,6 +445,7 @@ public class PhoneReader extends MessageArchiver {
 				
 			}
 			
+			//"language", "religion",  "journeyStage", "topic"
 			for(int i = 0; i < CUSTOM_FIELDS.length; i++){
 				
 				key = checkNull(results.getString(CUSTOM_FIELDS[i]));
@@ -481,13 +484,14 @@ public class PhoneReader extends MessageArchiver {
 
 	/**
 	 * Inserts the phone message into the messages table
-	 * @param owner contact id that owns this message
+	 * @param contact contact[0] id that owns this message, 
+	 *                contact[1] default assigned user
 	 * @param pr PhoneRecord containing data
 	 */
-	private void insertMessage(int owner, PhoneRecord pr) {
+	private void insertMessage(int[] contact, PhoneRecord pr) {
 		
 		String SQL = "INSERT INTO `messages` (`owner`, `type`, `direction`, " + //$NON-NLS-1$
-				"`preview`) VALUES (?, ?, ?, ?)"; //$NON-NLS-1$
+				"`preview`, `assigned_user`) VALUES (?, ?, ?, ?, ?)"; //$NON-NLS-1$
 		
 		/* Potentially could make this outside of message loop and reuse */
 		PreparedStatement insertMessage = null;
@@ -497,7 +501,7 @@ public class PhoneReader extends MessageArchiver {
 			
 			insertMessage = database.getConnection().prepareStatement(SQL, 
 					Statement.RETURN_GENERATED_KEYS);
-			insertMessage.setInt(1, owner);
+			insertMessage.setInt(1, contact[0]);
 			insertMessage.setString(2, "P"); //$NON-NLS-1$
 			insertMessage.setString(3, "I"); //$NON-NLS-1$
 			
@@ -517,6 +521,12 @@ public class PhoneReader extends MessageArchiver {
 			if(preview == null)
 				preview = ""; //$NON-NLS-1$
 			insertMessage.setString(4, preview);
+			
+			//Here we need to topic check the message and assign a user as appropriate
+			if(contact[1] == -1)
+				contact[1] = 0; //This sets to all users
+			
+			insertMessage.setInt(5, getAssignedUserID(pr, contact[1]));
 			
 			boolean inserted = insertMessage.execute();
 			
@@ -564,37 +574,65 @@ public class PhoneReader extends MessageArchiver {
 	 */
 	private void updateDatabase(PhoneRecord pr) {
 		
-		int id = -1;
+		/* Here we will decide where this contact/message needs to go */
+		if(pr.answeredBy == -1)
+			pr.assignedTo = getFreeUsers().getNextAvailableUser();
+		else{
+			
+			if(getFreeUsers().hasFreeUser(pr.answeredBy))
+				pr.assignedTo = pr.answeredBy;//if the person who answered the call is available assign them to the message
+			else
+				pr.assignedTo = getFreeUsers().getNextAvailableUser();//else get the next available person
+			
+		}
+		
+		//0: contactId, 1: contact assigned to user id
+		int[] contact = null;
 		
 		if(pr.getNumber() != null)
-			id = getContactIdByPhone(pr.getNumber());
+			contact = getContactIdByPhone(pr.getNumber());
 		
-		if(id == -1 && pr.email != null)
-			id = getContactIdByEmail(pr.email);
+		if(contact == null || (contact[0] == -1 && pr.email != null))
+			contact = getContactIdByEmail(pr.email);
 		
-		if(id == -1)
-			createNewContact(pr);
+		int insertedId = -1;
+		
+		if(contact == null || contact[0] == -1)
+			insertedId = createNewContact(pr);
 		else
-			updateContact(id, pr);
+			updateContact(contact, pr);
 		
-		if(id != -1)
-			insertMessage(id, pr);
+		if(insertedId != -1){//we created a new contact so setup contact array
+			
+			contact = new int[2];
+			contact[0] = insertedId;
+			contact[1] = -1;
+			
+		}
+		
+		if(contact != null && contact[0] != -1)
+			insertMessage(contact, pr);
 		
 	}
 	
 	/**
 	 * Updates the contact represented by the PhoneRecord
-	 * @param id id of contact we found in the contacts table
+	 * @param ids id of contact we found in the contacts table + person we 
+	 * should assign the contact to if necessary (contact default value)
 	 * @param pr these values are used to update
 	 * @return
 	 */
-	private boolean updateContact(int id, PhoneRecord pr) {
+	private boolean updateContact(int[] ids, PhoneRecord pr) {
 		
 		boolean success = false;
 		LOGGER.finer("Phone Archiver: Updating contact " + pr.getName()); //$NON-NLS-1$
 		
 		//Update Contact Table
 		ArrayList<KeyValue> values = pr.getNonNullValues();
+		
+		if(ids[1] == -1)//this contact hasn't been assigned to anyone so do it
+			values.add(new KeyValue("assigned_user_id", "" + pr.assignedTo));  //$NON-NLS-1$//$NON-NLS-2$
+			
 		SimpleDateFormat mysqlTime = new SimpleDateFormat("yyyyMMddHHmmss");//$NON-NLS-1$
 		
 		if(values.size() > 0){  
@@ -617,19 +655,19 @@ public class PhoneReader extends MessageArchiver {
 				for(int i = 2; i <= values.size() + 1; i++)
 					updateContact.setString(i, values.get(i - 2).value);
 				
-				updateContact.setInt(values.size() + 2, id);
+				updateContact.setInt(values.size() + 2, ids[0]);
 				
 				updateContact.execute();
 				
 				int rowsUpdated = updateContact.getUpdateCount();
 				
 				if(rowsUpdated > 0)
-					success = updateCustomFields(id, pr);
+					success = updateCustomFields(ids[0], pr);
 				
 			}catch(SQLException e){
 				
 				LOGGER.severe("Phone Archiver: Error while updating " + //$NON-NLS-1$
-						"contact" + id); //$NON-NLS-1$
+						"contact" + ids[0]); //$NON-NLS-1$
 				e.printStackTrace();
 				
 			}finally{
@@ -641,7 +679,7 @@ public class PhoneReader extends MessageArchiver {
 		}else{
 			
 			success = true;
-			LOGGER.info("Phone Archiver: Nothing to update for " + id); //$NON-NLS-1$
+			LOGGER.info("Phone Archiver: Nothing to update for " + ids[0]); //$NON-NLS-1$
 			
 		}
 			
@@ -720,15 +758,17 @@ public class PhoneReader extends MessageArchiver {
 	 * Creates a new contact in the contacts table and adds any custom fields
 	 * into the contact_values tables
 	 * @param pr Phone record to work on
-	 * @return true if successful
+	 * @return inserted id
 	 */
-	private boolean createNewContact(PhoneRecord pr) {
+	private int createNewContact(PhoneRecord pr) {
 		
 		LOGGER.info("Phone Archiver: Creating new contact " + pr.getName()); //$NON-NLS-1$
 		
-		boolean success = false;
+		int id = -1;
+		
 		ArrayList<KeyValue> values = pr.getNonNullValues();
-				
+		values.add(new KeyValue("assigned_user_id", "" + pr.assignedTo));  //$NON-NLS-1$//$NON-NLS-2$
+		
 		//but retain new id
 		//Custom fields use update as it will INSERT on DUP update
 		if(values.size() > 0){
@@ -763,13 +803,19 @@ public class PhoneReader extends MessageArchiver {
 					
 					results = insertContact.getGeneratedKeys();
 					
-					int id = -1;
-					
 					while(results.next())
 						id = results.getInt(1);
 					
-					if(id != -1)
-						success = updateCustomFields(id, pr);
+					if(id != -1){
+						
+						if(updateCustomFields(id, pr)){
+							
+							//add contact to user
+							getFreeUsers().addContact(pr.assignedTo);
+							
+						}
+					
+					}
 					
 				}
 				
@@ -787,12 +833,11 @@ public class PhoneReader extends MessageArchiver {
 			
 		}else{
 			
-			success = true;
 			LOGGER.info("Phone Archiver: Nothing to isnert for " + pr.getName()); //$NON-NLS-1$
 			
 		}
 		
-		return success;
+		return id;
 
 	}
 
@@ -800,10 +845,16 @@ public class PhoneReader extends MessageArchiver {
 	 * Searches contacts table and returns record id associated with email
 	 * @param email
 	 * @return id or -1 if not found
+	 *  0 = id
+	 *  1 = default contact assigned to
 	 */
-	private int getContactIdByEmail(String email){
+	private int[] getContactIdByEmail(String email){
 		
-		int id = -1;
+		int[] id = new int[2];
+		
+		for(int i = 0; i < 2; i++)
+			id[i] = -1;
+		
 		LOGGER.finer("Phone Archiver: Looking up contact by email " + email); //$NON-NLS-1$
 		
 		PreparedStatement selectEmail = null;
@@ -812,7 +863,8 @@ public class PhoneReader extends MessageArchiver {
 		try{
 			
 			selectEmail = database.getConnection().prepareStatement(
-					"SELECT `id` FROM `contacts` WHERE `email` LIKE ?"); //$NON-NLS-1$
+					"SELECT `id`, `assigned_user_id` FROM `contacts` " + //$NON-NLS-1$
+					"WHERE `email` LIKE ?"); //$NON-NLS-1$
 			
 			selectEmail.setString(1, "%" + email + "%"); //$NON-NLS-1$ //$NON-NLS-2$
 			
@@ -820,8 +872,15 @@ public class PhoneReader extends MessageArchiver {
 				
 				results = selectEmail.getResultSet();
 				
-				while(results.next())
-					id = results.getInt("id"); //$NON-NLS-1$
+				while(results.next()){
+				
+					id[0] = results.getInt("id"); //$NON-NLS-1$
+					id[1] = results.getInt("assigned_user_id"); //$NON-NLS-1$
+					
+					if(id[1] == 0)
+						id[1] = -1;
+					
+				}
 				
 				LOGGER.finer("Phone Archiver: Got contact id " + id); //$NON-NLS-1$
 				
@@ -846,11 +905,16 @@ public class PhoneReader extends MessageArchiver {
 	/**
 	 * Searches contacts table and returns record id associated with phone number
 	 * @param phone
-	 * @return id or -1 if not found
+	 * @return id or -1 if not found 
+	 *  0 = id
+	 *  1 = default contact assigned to id
 	 */
-	private int getContactIdByPhone(String phone){
+	private int[] getContactIdByPhone(String phone){
 		
-		int id = -1;
+		int[] id = new int[2];
+		
+		for(int i = 0; i < 2; i++)
+			id[i] = -1;
 		
 		LOGGER.finer("Phone Archiver: Looking up contact by phone " + phone); //$NON-NLS-1$
 		PreparedStatement selectPhone = null;
@@ -867,8 +931,15 @@ public class PhoneReader extends MessageArchiver {
 				
 				results = selectPhone.getResultSet();
 				
-				while(results.next())
-					id = results.getInt("id"); //$NON-NLS-1$
+				while(results.next()){
+					
+					id[0] = results.getInt("id"); //$NON-NLS-1$
+					id[1] = results.getInt("assigned_user_id"); //$NON-NLS-1$
+					
+					if(id[1] == 0)
+						id[1] = -1;
+					
+				}
 				
 				LOGGER.finer("Phone Archiver: Got contact id " + id); //$NON-NLS-1$
 				
