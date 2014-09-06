@@ -15,6 +15,7 @@ import java.util.logging.Logger;
 
 import com.thevoiceasia.contact.Contact;
 import com.thevoiceasia.database.DatabaseHelper;
+import com.thevoiceasia.phone.PhoneRecord;
 import com.thevoiceasia.user.FreeUsers;
 
 public class MessageArchiver extends Thread{
@@ -310,6 +311,35 @@ public class MessageArchiver extends Thread{
 				
 			}
 			
+		}
+		
+		return assignTo;
+		
+	}
+	
+	/**
+	 * See getAssignedUserID, entry point for PhoneReader as it doesn't use
+	 * Contact object
+	 * @param pr record to check
+	 * @param contactDefault the default id to assign this to
+	 * @return
+	 */
+	protected int getAssignedUserID(PhoneRecord pr, int contactDefault){
+		
+		int assignTo = -1;
+		
+		String type = "P"; //$NON-NLS-1$
+			
+		RoutingPriority rp = getHighestPriorityRoute(type, "", //$NON-NLS-1$
+				pr.getTopic().toUpperCase());
+			
+		if(rp != null){//null = no matches should we time lookup shows?
+				
+			if(rp.useContactDefault())
+				assignTo = contactDefault;
+			else
+				assignTo = rp.sendToUser;
+				
 		}
 		
 		return assignTo;
