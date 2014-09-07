@@ -19,8 +19,8 @@ import com.thevoiceasia.user.FreeUsers;
 
 public class Contact {
 
-	private String name = null, email = null, gender = null, phoneNumber = null;//,
-			//language = null, photo = null, status = null, autoReply = null;
+	private String name = null, email = null, gender = null, phoneNumber = null,
+			  status = null;//language = null, photo = null, autoReply = null;
 	private int id = -1, assignedUser = -1;//, languageID = -1, 
 	private long updated = -1;//, created = -1; 
 	private boolean sms = false;
@@ -42,6 +42,21 @@ public class Contact {
 	
 		//All set at instantiation to null or -1
 		LOGGER.setLevel(LEVEL);
+		
+	}
+	
+	/**
+	 * Returns true if this contact has Junk sender status
+	 * @return
+	 */
+	public boolean isJunk(){
+		
+		boolean junk = false;
+		
+		if(status != null && status.equalsIgnoreCase("J")) //$NON-NLS-1$
+			junk = true;
+		
+		return junk;
 		
 	}
 	
@@ -198,7 +213,7 @@ public class Contact {
 						updated = contact.getLong("updated"); //$NON-NLS-1$
 					
 					//Status
-					//status = contact.getString("status"); //$NON-NLS-1$
+					status = contact.getString("status"); //$NON-NLS-1$
 					
 					//Auto Reply
 					//autoReply = contact.getString("auto_reply"); //$NON-NLS-1$

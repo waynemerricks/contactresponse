@@ -237,86 +237,91 @@ public class EmailArchiver extends MessageArchiver implements EmailReader {
 		
 		Contact contact = new Contact(database, from, name, sms, getFreeUsers());
 		
-		if(subject.trim().endsWith("form submitted")) //$NON-NLS-1$
-			contact.updateWithWebForm(body);
+		if(!contact.isJunk()){
 			
-		int existingContactId = contact.getID();
-		String preview = body.replaceAll("\n", "  ").replaceAll("\r", ""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
-		
-		if(preview.startsWith("S:"))//Remove Subject prefix don't need it in preview //$NON-NLS-1$
-			preview = preview.substring(2);
-		
-		if(preview.length() > 50)
-			preview = preview.substring(0, 47) + "..."; //$NON-NLS-1$
-		
-		String SQL = "INSERT INTO `messages` (`owner`, `type`, `direction`, " + //$NON-NLS-1$
-				"`preview`) VALUES (?, ?, ?, ?)"; //$NON-NLS-1$
-		
-		int assignedUserID = getAssignedUserID(contact, to, body, false);
-		
-		if(assignedUserID != -1)
-			SQL = "INSERT INTO `messages` (`owner`, `type`, `direction`, " + //$NON-NLS-1$
-					"`preview`, `assigned_user`) VALUES (?, ?, ?, ?, ?)"; //$NON-NLS-1$
-		
-		Connection mysql = database.getConnection();
-		PreparedStatement insertMessage = null;
-		ResultSet insertIDs = null;
-		
-		try{
+			if(subject.trim().endsWith("form submitted")) //$NON-NLS-1$
+				contact.updateWithWebForm(body);
+				
+			int existingContactId = contact.getID();
+			String preview = body.replaceAll("\n", "  ").replaceAll("\r", ""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 			
-			//Bind all variables to statement
-			insertMessage = mysql.prepareStatement(SQL, 
-					Statement.RETURN_GENERATED_KEYS);
-			insertMessage.setInt(1, existingContactId);
-			insertMessage.setString(2, type);
-			insertMessage.setString(3, "I"); //$NON-NLS-1$
-			insertMessage.setString(4, preview);
+			if(preview.startsWith("S:"))//Remove Subject prefix don't need it in preview //$NON-NLS-1$
+				preview = preview.substring(2);
+			
+			if(preview.length() > 50)
+				preview = preview.substring(0, 47) + "..."; //$NON-NLS-1$
+			
+			String SQL = "INSERT INTO `messages` (`owner`, `type`, `direction`, " + //$NON-NLS-1$
+					"`preview`) VALUES (?, ?, ?, ?)"; //$NON-NLS-1$
+			
+			int assignedUserID = getAssignedUserID(contact, to, body, false);
 			
 			if(assignedUserID != -1)
-				insertMessage.setInt(5, assignedUserID);
+				SQL = "INSERT INTO `messages` (`owner`, `type`, `direction`, " + //$NON-NLS-1$
+						"`preview`, `assigned_user`) VALUES (?, ?, ?, ?, ?)"; //$NON-NLS-1$
 			
-			//Execute it
-			int rows = insertMessage.executeUpdate();
+			Connection mysql = database.getConnection();
+			PreparedStatement insertMessage = null;
+			ResultSet insertIDs = null;
 			
-			if(rows > 0){
-			
-				LOGGER.finest("Successfully added message from " + from); //$NON-NLS-1$
-				insertIDs = insertMessage.getGeneratedKeys();
+			try{
 				
-				while(insertIDs.next()){
+				//Bind all variables to statement
+				insertMessage = mysql.prepareStatement(SQL, 
+						Statement.RETURN_GENERATED_KEYS);
+				insertMessage.setInt(1, existingContactId);
+				insertMessage.setString(2, type);
+				insertMessage.setString(3, "I"); //$NON-NLS-1$
+				insertMessage.setString(4, preview);
 				
-					int id = insertIDs.getInt(1);
-					success = writeMessageToArchive(id, body);
+				if(assignedUserID != -1)
+					insertMessage.setInt(5, assignedUserID);
+				
+				//Execute it
+				int rows = insertMessage.executeUpdate();
+				
+				if(rows > 0){
+				
+					LOGGER.finest("Successfully added message from " + from); //$NON-NLS-1$
+					insertIDs = insertMessage.getGeneratedKeys();
 					
-					if(!success){
+					while(insertIDs.next()){
+					
+						int id = insertIDs.getInt(1);
+						success = writeMessageToArchive(id, body);
 						
-						LOGGER.warning("Error writing to archive, removing " + //$NON-NLS-1$
-								"message from database: " + from); //$NON-NLS-1$
-						removeMessageFromDatabase(id);
-						
+						if(!success){
+							
+							LOGGER.warning("Error writing to archive, removing " + //$NON-NLS-1$
+									"message from database: " + from); //$NON-NLS-1$
+							removeMessageFromDatabase(id);
+							
+						}
+					
 					}
-				
+					
+					if(success)
+						LOGGER.finest("Successfully archived message from "  //$NON-NLS-1$
+								+ from);
+					else
+						LOGGER.severe("Failed to archive message from "  //$NON-NLS-1$
+								+ from);
+					
 				}
 				
-				if(success)
-					LOGGER.finest("Successfully archived message from "  //$NON-NLS-1$
-							+ from);
-				else
-					LOGGER.severe("Failed to archive message from "  //$NON-NLS-1$
-							+ from);
+			}catch(SQLException e){
 				
+				e.printStackTrace();
+				LOGGER.severe("SQL Error while inserting message"); //$NON-NLS-1$
+				
+			}finally{
+				
+				close(insertMessage, insertIDs);
+	        	
 			}
-			
-		}catch(SQLException e){
-			
-			e.printStackTrace();
-			LOGGER.severe("SQL Error while inserting message"); //$NON-NLS-1$
-			
-		}finally{
-			
-			close(insertMessage, insertIDs);
-        	
-		}
+		
+		}else
+			success = true; //True because junk = bin the email
 		
 		return success;
 		
