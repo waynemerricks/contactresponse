@@ -427,6 +427,7 @@ public class PhoneReader extends MessageArchiver {
 				populateUserIDs();
 				populateCustomIDs();
 				initialiseFreeUsers();
+				getAssignedUserList();
 				
 			}
 			
@@ -522,11 +523,20 @@ public class PhoneReader extends MessageArchiver {
 				preview = ""; //$NON-NLS-1$
 			insertMessage.setString(4, preview);
 			
-			//Here we need to topic check the message and assign a user as appropriate
-			if(contact[1] == -1)
-				contact[1] = 0; //This sets to all users
+			//If assigned = -1 it means all our users have reached max contacts
+			//Set to 0 so it will go to anyone who has default helper permission
+			if(contact[1] == -1){
+				
+				contact[1] = 0;
+				LOGGER.warning("All users have reached the maximum number of contacts\n"); //$NON-NLS-1$
+				
+			}
 			
-			insertMessage.setInt(5, getAssignedUserID(pr, contact[1]));
+			//Here we need to topic check the message and assign a user as appropriate
+			int assignedID = getAssignedUserID(pr, contact[1]);
+			
+			LOGGER.finer("Assigning message to user " + assignedID); //$NON-NLS-1$
+			insertMessage.setInt(5, assignedID);
 			
 			boolean inserted = insertMessage.execute();
 			
@@ -599,14 +609,20 @@ public class PhoneReader extends MessageArchiver {
 		
 		if(contact == null || contact[0] == -1)
 			insertedId = createNewContact(pr);
-		else
+		else{
+		
 			updateContact(contact, pr);
+			
+			if(contact[1] == -1)
+				contact[1] = pr.assignedTo;
+			
+		}
 		
 		if(insertedId != -1){//we created a new contact so setup contact array
 			
 			contact = new int[2];
 			contact[0] = insertedId;
-			contact[1] = -1;
+			contact[1] = pr.assignedTo;
 			
 		}
 		
@@ -629,13 +645,20 @@ public class PhoneReader extends MessageArchiver {
 		
 		//Update Contact Table
 		ArrayList<KeyValue> values = pr.getNonNullValues();
+		int updateFreeUsers = -1;
 		
-		if(ids[1] == -1)//this contact hasn't been assigned to anyone so do it
-			values.add(new KeyValue("assigned_user_id", "" + pr.assignedTo));  //$NON-NLS-1$//$NON-NLS-2$
+		if(ids[1] == -1){//this contact hasn't been assigned to anyone so do it
 			
+			values.add(new KeyValue("assigned_user_id", "" + pr.assignedTo));  //$NON-NLS-1$//$NON-NLS-2$
+			LOGGER.info("Assigned contact " + ids[0] + " to " +  //$NON-NLS-1$//$NON-NLS-2$
+					pr.assignedTo); 
+			updateFreeUsers = pr.assignedTo;
+			
+		}
+		
 		SimpleDateFormat mysqlTime = new SimpleDateFormat("yyyyMMddHHmmss");//$NON-NLS-1$
 		
-		if(values.size() > 0){  
+		if(values.size() > 0){
 			
 			String SQL = "UPDATE `contacts` SET `updated` = ?";  //$NON-NLS-1$
 			
@@ -661,8 +684,16 @@ public class PhoneReader extends MessageArchiver {
 				
 				int rowsUpdated = updateContact.getUpdateCount();
 				
-				if(rowsUpdated > 0)
+				if(rowsUpdated > 0){
+					
 					success = updateCustomFields(ids[0], pr);
+					
+					//If we had to assign this contact to a user update the
+					//count here
+					if(updateFreeUsers != -1)
+						getFreeUsers().addContact(updateFreeUsers);
+					
+				}
 				
 			}catch(SQLException e){
 				
@@ -808,13 +839,10 @@ public class PhoneReader extends MessageArchiver {
 					
 					if(id != -1){
 						
-						if(updateCustomFields(id, pr)){
-							
-							//add contact to user
-							getFreeUsers().addContact(pr.assignedTo);
-							
-						}
-					
+						updateCustomFields(id, pr);
+						//add contact to user
+						getFreeUsers().addContact(pr.assignedTo);
+						
 					}
 					
 				}
@@ -923,7 +951,7 @@ public class PhoneReader extends MessageArchiver {
 		try{
 			
 			selectPhone = database.getConnection().prepareStatement(
-					"SELECT `id` FROM `contacts` WHERE `phone` LIKE ?"); //$NON-NLS-1$
+					"SELECT `id`, `assigned_user_id` FROM `contacts` WHERE `phone` LIKE ?"); //$NON-NLS-1$
 			
 			selectPhone.setString(1, "%" + phone + "%"); //$NON-NLS-1$ //$NON-NLS-2$
 			
