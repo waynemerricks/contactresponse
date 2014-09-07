@@ -329,9 +329,14 @@ public class MessageArchiver extends Thread{
 		int assignTo = -1;
 		
 		String type = "P"; //$NON-NLS-1$
-			
+		
+		String topic = ""; //$NON-NLS-1$
+		
+		if(pr.getTopic() != null)//Topic can be null annoyingly
+			topic = pr.getTopic();
+		
 		RoutingPriority rp = getHighestPriorityRoute(type, "", //$NON-NLS-1$
-				pr.getTopic().toUpperCase());
+				topic.toUpperCase());
 			
 		if(rp != null){//null = no matches should we time lookup shows?
 				
