@@ -11,7 +11,7 @@
             WHERE ';
 
     if($lastMessage != NULL)
-      $sql .= '`messages`.`id` > ' . $lastMessage;
+      $sql .= '`messages`.`id` > ' . $lastMessage . ' AND ';
 
     if($canViewAll === FALSE){
 
