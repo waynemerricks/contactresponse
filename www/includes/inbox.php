@@ -15,7 +15,7 @@
 
     if($canViewAll === FALSE){
 
-    	$sql .= ' AND (`messages`.`assigned_user` = ' . $userid;
+    	$sql .= ' (`messages`.`assigned_user` = ' . $userid;
     	
     	if($getUnassignedRecords === TRUE)
     		$sql .= ' OR `messages`.`assigned_user` = 0';
