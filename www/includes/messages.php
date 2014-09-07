@@ -8,17 +8,25 @@
    * @param $mysqli
    * @return
    */
-  function getPendingMessages($user, $contact, $getUnassignedRecords, $mysqli){
+  function getPendingMessages($user, $contact, $canViewAll, $getUnassignedRecords, $mysqli){
 
     $messages = array();
     $sql = 'SELECT `messages`.`id`, `messages`.`created`, `messages`.`type`
             FROM `messages`
-            WHERE (`messages`.`assigned_user` = ' . $user;
+            WHERE ';
+            
+    if($canViewAll === FALSE){
+    	
+    	$sql .= '(`messages`.`assigned_user` = ' . $user;
+    	
+    	if($getUnassignedRecords === TRUE)
+    		$sql .= ' OR `messages`.`assigned_user` = 0';
+    	
+    	$sql .= ') AND ';
 
-    if($getUnassignedRecords === TRUE)
-      $sql .= ' OR `messages`.`assigned_user` = 0';
-
-    $sql .= ') AND `messages`.`status` = \'D\' AND `messages`.`type` != \'A\'
+    }
+    
+    $sql .= '`messages`.`status` = \'D\' AND `messages`.`type` != \'A\'
             AND `owner` = ' . $contact;
 
     $result = $mysqli->query($sql);
