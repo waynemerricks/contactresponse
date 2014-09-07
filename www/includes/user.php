@@ -127,6 +127,20 @@
   }
 
   /**
+   * Returns true if this user can view all messages regardless of assigned user
+   */
+  function canViewAll(){
+  
+  	$all = FALSE;
+  
+  	if(hasPermission('VIEW_ALL_INBOX'))
+  		$all = TRUE;
+  
+  	return $all;
+  
+  }
+  
+  /**
    * Returns true if this user can view admin menu
    */
   function isAdmin(){
