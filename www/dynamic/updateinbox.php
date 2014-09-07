@@ -11,7 +11,7 @@
     include('../includes/inbox.php'); //Functions for getting the inbox of this user
     include('../includes/user.php'); //Functions relating to logged in user
 
-    $contactsPending = getInbox(getUserId(), isDefaultHelper(), $mysqli, $_GET['lastMessage']);
+    $contactsPending = getInbox(getUserId(), canViewAll(), isDefaultHelper(), $mysqli, $_GET['lastMessage']);
 
     if(sizeof($contactsPending) > 0)
       echo 'SUCCESS' . json_encode($contactsPending);
