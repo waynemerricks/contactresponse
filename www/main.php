@@ -11,7 +11,7 @@
   include('includes/autoreplies.php'); //Functions relating to auto replies
 
   $autoReplies = getAutoReplyTypes($mysqli);
-  $contactsPending = getInbox(getUserId(), isDefaultHelper(), $mysqli);
+  $contactsPending = getInbox(getUserId(), canViewAll(), isDefaultHelper(), $mysqli);
 
   $lastMessageID = -1;
 

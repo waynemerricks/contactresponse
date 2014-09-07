@@ -16,7 +16,7 @@
   if(isset($_GET['id'])){
 
     $pendingMessages = getPendingMessages(getUserId(), $_GET['id'], 
-        isDefaultHelper(), $mysqli);
+        canViewAll(), isDefaultHelper(), $mysqli);
     $lastMessageID = -1;//Set this to the id of newest message (last in array)
 
     $contact = new Contact($_GET['id'], $mysqli);
