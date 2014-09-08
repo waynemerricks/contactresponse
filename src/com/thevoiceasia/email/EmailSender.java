@@ -3,9 +3,13 @@ package com.thevoiceasia.email;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.logging.Logger;
 
 import com.thevoiceasia.database.DatabaseHelper;
+import com.thevoiceasia.messages.OutgoingTemplate;
 
 public class EmailSender {
 
@@ -13,6 +17,7 @@ public class EmailSender {
 	private static final Logger LOGGER = Logger.getLogger("com.thevoiceasia.email"); //$NON-NLS-1$
 	
 	private DatabaseHelper database = null;
+	private HashMap<Integer, OutgoingTemplate> templates = null;
 	private String host = null, user = null, password = null;
 	
 	public EmailSender(String emailServer, String emailUser, 
@@ -29,14 +34,76 @@ public class EmailSender {
 	}
 	
 	/**
+	 * Reads templates from the templates table
+	 */
+	private void getTemplates(){
+		
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss"); //$NON-NLS-1$
+		
+		String SQL = "SELECT `id`, `from`, `date`, `exclusive`, `priority` " + //$NON-NLS-1$
+				"FROM `templates` WHERE `date` = NULL OR `date` = " + //$NON-NLS-1$
+				sdf.format(new Date()); 
+		
+		Statement selectTemplates = null;
+		ResultSet results = null;
+		
+		try{
+			
+			selectTemplates = database.getConnection().createStatement();
+			
+			if(selectTemplates.execute(SQL)){
+				
+				results = selectTemplates.getResultSet();
+				
+				templates = new HashMap<Integer, OutgoingTemplate>();
+				
+				while(results.next()){
+					
+					//Read templates and add to map
+					boolean exclusive = false;
+					
+					if(results.getString("exclusive").equals("Y"))  //$NON-NLS-1$//$NON-NLS-2$
+						exclusive = true;
+					
+					OutgoingTemplate out = new OutgoingTemplate(
+							results.getInt("id"), //$NON-NLS-1$
+							results.getString("from"), //$NON-NLS-1$
+							exclusive,
+							results.getInt("priority"), //$NON-NLS-1$
+							results.getString("date")); //$NON-NLS-1$
+					templates.put(out.getId(), out);
+					
+				}
+				
+				if(templates.size() < 1)//reset to null if there are no templates
+					templates = null;
+				
+			}
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Auto Reply Sender: Unable to get outgoing templates"); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(selectTemplates, results);
+			
+		}
+		
+	}
+	
+	/**
 	 * Call to process the list of outgoing messages
 	 */
 	public void processOutgoingMessages(){
 		
 		database.connect();
+		getTemplates();
 		
-		String SQL = "SELECT * FROM `messages` WHERE `direction` = 'O' AND " + //$NON-NLS-1$
-				"`status` = 'U' ORDER BY `owner` ASC, `created` DESC"; //$NON-NLS-1$
+		String SQL = "SELECT `id`, `owner`, `created_by` FROM `messages` " + //$NON-NLS-1$
+				"WHERE `direction` = 'O' AND `status` = 'U' " + //$NON-NLS-1$
+				"ORDER BY `owner` ASC, `created` DESC"; //$NON-NLS-1$
 		
 		Statement selectMessages = null;
 		ResultSet results = null;
