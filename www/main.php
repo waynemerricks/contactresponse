@@ -284,17 +284,17 @@
                 </div>
               </div>
             </td>
-            <td class="time centre">
+            <td class="text time centre">
               <a href="viewPending.php?id=<?php echo $contactsPending[$i]['id']; ?>">
                 <?php echo $contactsPending[$i]['date']; ?>
               </a>
             </td>
-            <td class="name">
+            <td class="text name">
               <a href="viewPending.php?id=<?php echo $contactsPending[$i]['id']; ?>">
                 <?php echo $contactsPending[$i]['name']; ?>
               </a>
             </td>
-            <td class="preview">
+            <td class="text preview">
               <a href="viewPending.php?id=<?php echo $contactsPending[$i]['id']; ?>">
                 <?php echo $contactsPending[$i]['preview']; ?>
               </a>

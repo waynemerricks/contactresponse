@@ -169,7 +169,22 @@ table.inbox tr a {
   display: block;
   text-decoration: none;
   color: black;
+	
+}
 
+table.inbox td {
+	
+	height: 100%;
+	vertical-align: middle;
+	
+}
+
+table.inbox td.text a {
+	
+	height: 100%;
+	padding-top: 12px;
+	vertical-align: middle;
+	
 }
 
 .quickTools {
