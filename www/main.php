@@ -121,6 +121,8 @@
         if(newMessage.preview.length < 50)
           previewIsFullMessage = true;
 
+        if(newMessage.preview.trim().length < 1)
+            newMessage.preview = '&nbsp;';
         var canReplyFromInbox = $('#canReplyFromInbox').val();
         var canJunk = $('#canJunk').val();
 
@@ -219,8 +221,14 @@
               $previewIsFullMessage = false;
 
               if(substr($contactsPending[$i]['preview'], -3) != '...' || 
-                    strlen($contactsPending[$i]['preview'] < 50))
+                    strlen($contactsPending[$i]['preview'] < 50)){
+              	
                 $previewIsFullMessage = true;
+                
+                if(strlen(trim($contactsPending[$i]['preview'])) < 1)
+                	$contactsPending[$i]['preview'] = '&nbsp;';
+                
+              }
 
               $src = 'images/generic.png';
 
