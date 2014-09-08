@@ -4,11 +4,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.logging.Logger;
 
 import com.thevoiceasia.database.DatabaseHelper;
+import com.thevoiceasia.database.KeyValue;
 import com.thevoiceasia.messages.OutgoingTemplate;
 
 public class EmailSender {
@@ -18,11 +20,13 @@ public class EmailSender {
 	
 	private DatabaseHelper database = null;
 	private HashMap<Integer, OutgoingTemplate> templates = null;
-	private String host = null, user = null, password = null;
+	private String host = null, user = null, password = null, 
+			templateBasePath = null;
+	private ArrayList<KeyValue> languages = new ArrayList<KeyValue>();
 	
 	public EmailSender(String emailServer, String emailUser, 
 			String emailPassword, String databaseHost, String databaseUser,
-			String databasePassword, String databaseName){
+			String databasePassword, String databaseName, String templatePath){
 		
 		this.database = new DatabaseHelper(databaseHost, databaseName, 
 				databaseUser, databasePassword);
@@ -30,9 +34,46 @@ public class EmailSender {
 		this.host = emailServer;
 		this.user = emailUser;
 		this.password = emailPassword;
+		this.templateBasePath = templatePath;
 		
 	}
 	
+	/**
+	 * Reads languages from language table
+	 */
+	private void getLanguages(){
+		
+		String SQL = "SELECT * FROM `languages`"; //$NON-NLS-1$
+		
+		Statement selectLanguages = null;
+		ResultSet results = null;
+		
+		try{
+			
+			selectLanguages = database.getConnection().createStatement();
+			
+			if(selectLanguages.execute(SQL)){
+				
+				results = selectLanguages.getResultSet();
+				
+				while(results.next())
+					languages.add(new KeyValue("" + results.getInt("id"),   //$NON-NLS-1$//$NON-NLS-2$
+							results.getString("language").toLowerCase()));  //$NON-NLS-1$
+				
+			}
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("SQL Error getting languages"); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(selectLanguages, results);
+			
+		}
+		
+	}
 	/**
 	 * Reads templates from the templates table
 	 */
@@ -70,7 +111,10 @@ public class EmailSender {
 							results.getString("from"), //$NON-NLS-1$
 							exclusive,
 							results.getInt("priority"), //$NON-NLS-1$
-							results.getString("date")); //$NON-NLS-1$
+							results.getString("date"),//$NON-NLS-1$
+							templateBasePath,
+							(KeyValue[])languages.toArray()); 
+					
 					templates.put(out.getId(), out);
 					
 				}
@@ -99,6 +143,7 @@ public class EmailSender {
 	public void processOutgoingMessages(){
 		
 		database.connect();
+		getLanguages();
 		getTemplates();
 		
 		String SQL = "SELECT `id`, `owner`, `created_by` FROM `messages` " + //$NON-NLS-1$
