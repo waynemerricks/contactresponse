@@ -13,7 +13,7 @@
     $mysqli = getDatabaseRead();//Get read connection
 
     //Verify User Password
-    $sql = 'SELECT `password`, `id` FROM `users` WHERE `login_name` = ?';
+    $sql = 'SELECT `password`, `id` FROM `users` WHERE `canLogin` = \'Y\' AND `login_name` = ?';
 
     if($stmt = $mysqli->prepare($sql)){
 
