@@ -1,5 +1,6 @@
 package com.thevoiceasia.email;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -7,10 +8,13 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.logging.Logger;
 
 import com.thevoiceasia.database.DatabaseHelper;
 import com.thevoiceasia.database.KeyValue;
+import com.thevoiceasia.messages.OutgoingMessage;
+import com.thevoiceasia.messages.OutgoingQueue;
 import com.thevoiceasia.messages.OutgoingTemplate;
 
 public class EmailSender {
@@ -19,10 +23,12 @@ public class EmailSender {
 	private static final Logger LOGGER = Logger.getLogger("com.thevoiceasia.email"); //$NON-NLS-1$
 	
 	private DatabaseHelper database = null;
-	private HashMap<Integer, OutgoingTemplate> templates = null;
+	private HashMap<Integer, OutgoingTemplate> templates = null;//<template id, template>
 	private String host = null, user = null, password = null, 
 			templateBasePath = null;
 	private ArrayList<KeyValue> languages = new ArrayList<KeyValue>();
+	private OutgoingQueue queue = null;
+	private PreparedStatement updateMessage = null;
 	
 	public EmailSender(String emailServer, String emailUser, 
 			String emailPassword, String databaseHost, String databaseUser,
@@ -145,8 +151,9 @@ public class EmailSender {
 		database.connect();
 		getLanguages();
 		getTemplates();
+		queue = new OutgoingQueue(templates);
 		
-		String SQL = "SELECT `id`, `owner`, `created_by` FROM `messages` " + //$NON-NLS-1$
+		String SQL = "SELECT `id`, `owner`, `created_by`, `type` FROM `messages` " + //$NON-NLS-1$
 				"WHERE `direction` = 'O' AND `status` = 'U' " + //$NON-NLS-1$
 				"ORDER BY `owner` ASC, `created` DESC"; //$NON-NLS-1$
 		
@@ -163,8 +170,13 @@ public class EmailSender {
 				
 				while(results.next()){
 					
-					//TODO do something
-					
+					OutgoingMessage message = new OutgoingMessage();
+					message.id = results.getInt("id"); //$NON-NLS-1$
+					message.owner = results.getInt("owner"); //$NON-NLS-1$
+					message.createdBy = results.getInt("created_by"); //$NON-NLS-1$
+					message.type = results.getInt("type"); //$NON-NLS-1$
+				
+					queue.addMessage(message);
 					
 				}
 				
@@ -181,10 +193,81 @@ public class EmailSender {
 			
 		}
 		
+		//Archive Old ones
+		archiveMessages();
+		
+		//Send out messages
+		sendMessages();
+		
 		database.disconnect();
 		
 	}
 	
+	/**
+	 * Helper method to update status of a record in the messages table
+	 * @param id id of record
+	 * @param status status to set
+	 * @return true if updated, false if errors
+	 */
+	private boolean updateMessage(int id, String status){
+		
+		boolean updated = false;
+		
+		String SQL = "UPDATE `messages` SET `status` = ? WHERE `id` = ?"; //$NON-NLS-1$
+		
+		try{
+			
+			if(updateMessage == null)//can reuse this
+				updateMessage = database.getConnection().prepareStatement(SQL);
+			
+			updateMessage.setString(1, status);
+			updateMessage.setInt(2, id);
+			
+			int rows = updateMessage.executeUpdate();
+			
+			if(rows > 0)
+				updated = true;
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Error while updating message status " + id); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}
+		
+		return updated;
+		
+	}
+	
+	/**
+	 * Sets messages in the queue flagged as Archive to status = A in messages 
+	 * DB
+	 */
+	private void archiveMessages() {
+		
+		Iterator<Integer> keys = queue.getIterator();
+		
+		while(keys.hasNext()){
+			
+			ArrayList<OutgoingMessage> contact = queue.get(keys.next());
+			
+			for(int i = 0; i < contact.size(); i++)
+				if(contact.get(i).archive)
+					updateMessage(contact.get(i).id, "A"); //$NON-NLS-1$
+			
+		}
+		
+		//Close Connections
+		close(updateMessage, null);
+		
+	}
+	
+	
+	private void sendMessages() {
+		// TODO Auto-generated method stub
+		
+	}
+
 	/**
 	 * Helper method to close statements and resultsets
 	 * @param statement
