@@ -1,4 +1,4 @@
-package com.thevoiceasia.email;
+package com.thevoiceasia.messages;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -13,11 +13,8 @@ import java.util.logging.Logger;
 
 import com.thevoiceasia.database.DatabaseHelper;
 import com.thevoiceasia.database.KeyValue;
-import com.thevoiceasia.messages.OutgoingMessage;
-import com.thevoiceasia.messages.OutgoingQueue;
-import com.thevoiceasia.messages.OutgoingTemplate;
 
-public class EmailSender {
+public class OutgoingWorker {
 
 	private static final boolean DEBUG = true;
 	private static final Logger LOGGER = Logger.getLogger("com.thevoiceasia.email"); //$NON-NLS-1$
@@ -30,7 +27,7 @@ public class EmailSender {
 	private OutgoingQueue queue = null;
 	private PreparedStatement updateMessage = null;
 	
-	public EmailSender(String emailServer, String emailUser, 
+	public OutgoingWorker(String emailServer, String emailUser, 
 			String emailPassword, String databaseHost, String databaseUser,
 			String databasePassword, String databaseName, String templatePath){
 		
@@ -261,7 +258,6 @@ public class EmailSender {
 		close(updateMessage, null);
 		
 	}
-	
 	
 	private void sendMessages() {
 		// TODO Auto-generated method stub
