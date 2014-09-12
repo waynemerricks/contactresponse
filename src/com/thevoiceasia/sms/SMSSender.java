@@ -100,8 +100,11 @@ public class SMSSender {
 				.connectTimeout(2000).socketTimeout(2000).execute()
 					.returnContent().asString();
 			smsResponse = HTML2Text.convert(smsResponse).trim();
+			
 			if(smsResponse.startsWith("ID: ")) //$NON-NLS-1$
 				sent = true;
+			else
+				LOGGER.warning("SMSERROR: " + smsResponse); //$NON-NLS-1$
 			
 		}catch(IOException e){
 			
