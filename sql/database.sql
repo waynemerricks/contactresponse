@@ -1,6 +1,6 @@
 -- MySQL dump 10.13  Distrib 5.5.38, for debian-linux-gnu (x86_64)
 --
--- Host: 10.43.10.120    Database: crs
+-- Host: localhost    Database: crs
 -- ------------------------------------------------------
 -- Server version	5.5.38-0ubuntu0.14.04.1
 
@@ -46,7 +46,7 @@ CREATE TABLE `contact_values_large` (
   `value` text,
   PRIMARY KEY (`id`),
   UNIQUE KEY `owner_field` (`owner_id`,`field_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4005 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=7392 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -80,7 +80,7 @@ CREATE TABLE `contact_values_small` (
   `value` varchar(25) DEFAULT '',
   PRIMARY KEY (`id`),
   UNIQUE KEY `owner_field` (`owner_id`,`field_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=10522 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=19125 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -104,7 +104,7 @@ CREATE TABLE `contacts` (
   `status` char(1) NOT NULL DEFAULT 'N',
   `auto_reply` char(1) NOT NULL DEFAULT 'Y',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2121 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=2986 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -146,7 +146,7 @@ CREATE TABLE `message_priorities` (
   `type` char(1) NOT NULL,
   `term` varchar(50) NOT NULL,
   `user_id` int(11) NOT NULL DEFAULT '0',
-  `priority` int(11) NOT NULL DEFAULT '0',
+  `priority` int(3) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=35 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -170,7 +170,7 @@ CREATE TABLE `messages` (
   `status` char(1) NOT NULL DEFAULT 'D',
   `preview` varchar(50) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=70037 DEFAULT CHARSET=utf8 COMMENT='utf8_general_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=77361 DEFAULT CHARSET=utf8 COMMENT='utf8_general_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -231,9 +231,9 @@ DROP TABLE IF EXISTS `settings`;
 CREATE TABLE `settings` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(25) NOT NULL DEFAULT '',
-  `value` varchar(25) NOT NULL DEFAULT '',
+  `value` varchar(40) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=latin1 COMMENT='latin1_swedish_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -258,10 +258,12 @@ DROP TABLE IF EXISTS `templates`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `templates` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `fromE` varchar(50) NOT NULL DEFAULT 'contact@thevoiceasia.com',
+  `from` varchar(50) NOT NULL DEFAULT 'contact@thevoiceasia.com',
   `type` char(1) NOT NULL DEFAULT 'G',
   `label` varchar(25) NOT NULL DEFAULT 'General',
   `date` timestamp NULL DEFAULT NULL,
+  `exclusive` char(1) NOT NULL DEFAULT 'Y',
+  `priority` int(2) NOT NULL DEFAULT '99',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8 COMMENT='utf8_general_ci';
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -296,4 +298,4 @@ CREATE TABLE `users` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2014-09-06 22:31:07
+-- Dump completed on 2014-09-12 18:10:11
