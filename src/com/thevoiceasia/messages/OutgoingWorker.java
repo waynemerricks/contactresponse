@@ -13,6 +13,8 @@ import java.util.logging.Logger;
 
 import com.thevoiceasia.database.DatabaseHelper;
 import com.thevoiceasia.database.KeyValue;
+import com.thevoiceasia.email.EmailSender;
+import com.thevoiceasia.sms.SMSSender;
 
 public class OutgoingWorker {
 
@@ -191,7 +193,8 @@ public class OutgoingWorker {
 		}
 		
 		//Archive Old ones
-		archiveMessages();
+		if(!DEBUG)
+			archiveMessages();
 		
 		//Send out messages
 		sendMessages();
@@ -260,7 +263,37 @@ public class OutgoingWorker {
 	}
 	
 	private void sendMessages() {
+		
 		// TODO Auto-generated method stub
+		EmailSender email = new EmailSender(host, user, password);
+		SMSSender sms = new SMSSender(database);
+		
+		Iterator<Integer> contactId = queue.getIterator();
+		
+		while(contactId.hasNext()){
+			
+			int id = contactId.next();
+			
+			ArrayList<OutgoingMessage> toSend = queue.get(id);
+			
+			for(int i = 0; i < toSend.size(); i++){
+				
+				if(!toSend.get(i).archive){
+					
+					//Need to send this one
+					OutgoingMessage message = toSend.get(i);
+					
+					/* TODO get contact from message.owner figure out email or
+					 * sms and populate template with it.
+					 * 
+					 * Then send the thing and mark as sent/fail in DB
+					 */
+					
+				}
+				
+			}
+			
+		}
 		
 	}
 
