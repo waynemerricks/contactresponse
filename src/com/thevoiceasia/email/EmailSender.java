@@ -32,18 +32,19 @@ public class EmailSender {
 		
 	}
 
-	public void sendEmail(String recipient, String from, String subject, 
+	public boolean sendEmail(String recipient, String from, String subject, 
 			String body) throws MessagingException, UnknownHostException{
 		
 		String[] recipients = {recipient};
 		
-		postMail(recipients, from, subject, body);
+		return postMail(recipients, from, subject, body);
 		
 	}
 	
-	private void postMail(String recipients[], String from, String subject, 
+	private boolean postMail(String recipients[], String from, String subject, 
 			String message) throws MessagingException, UnknownHostException{
-	    //Set the host smtp address
+		
+		//Set the host smtp address
 	    Properties props = new Properties();
 	    props.put("mail.smtp.host", serverName); //$NON-NLS-1$
 	    props.put("mail.from", from); //$NON-NLS-1$
@@ -80,6 +81,8 @@ public class EmailSender {
 	    msg.setFrom(new InternetAddress(from));
 
 	    Transport.send(msg);
+	    
+	    return true;//if we got this far without an error then it sent
 	    
 	}
 
