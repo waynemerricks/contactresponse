@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.logging.Logger;
 
+import com.thevoiceasia.contact.Contact;
 import com.thevoiceasia.database.DatabaseHelper;
 import com.thevoiceasia.database.KeyValue;
 import com.thevoiceasia.email.EmailSender;
@@ -262,6 +263,13 @@ public class OutgoingWorker {
 		
 	}
 	
+	/**
+	 * Actually sends the messages out from here.  This will find out the
+	 * contacts details and using the preferred language and contact method
+	 * send them either an SMS or an email.
+	 * 
+	 * If this user is flagged as not wanting Auto Replies, they are skipped.
+	 */
 	private void sendMessages() {
 		
 		// TODO Auto-generated method stub
@@ -288,6 +296,15 @@ public class OutgoingWorker {
 					 * 
 					 * Then send the thing and mark as sent/fail in DB
 					 */
+					Contact contact = new Contact(database, id);
+					
+					if(!contact.hasErrors() && contact.wantsAutoReply()){
+						
+						//Contact hasn't opted out so send them the template
+						
+						
+					}
+					
 					
 				}
 				
