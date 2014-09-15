@@ -20,13 +20,14 @@ import com.thevoiceasia.user.FreeUsers;
 public class Contact {
 
 	private String name = null, email = null, gender = null, phoneNumber = null,
-			  status = null;//language = null, photo = null, autoReply = null;
-	private int id = -1, assignedUser = -1;//, languageID = -1, 
+			  status = null, language = null, autoReply = null;//photo = null, 
+	private int id = -1, assignedUser = -1, languageID = -1; 
 	private long updated = -1;//, created = -1; 
 	private boolean sms = false;
 	private HashMap<String, String> custom = new HashMap<String, String>();
 	private FreeUsers users = null;
 	private int currentFreeUser = -1;
+	private boolean error = false;
 	
 	private DatabaseHelper database = null;
 
@@ -46,6 +47,44 @@ public class Contact {
 	}
 	
 	/**
+	 * Returns languageID
+	 * @return -1 by default/not set
+	 *  		1 = DB default
+	 *  		other = manually set
+	 */
+	public int getLanguageID(){
+		
+		return languageID;
+		
+	}
+	
+	/**
+	 * Returns the language name/label
+	 * @return e.g. English
+	 */
+	public String getLanguageName(){
+		
+		return language;
+		
+	}
+	
+	/**
+	 * Checks the auto reply flag for this contact which signifies whether
+	 * user has opted out of the auto replies or not
+	 * @return true if contact still wants auto replies (true/Y by default)
+	 */
+	public boolean wantsAutoReply(){
+		
+		boolean wants = false;
+		
+		if(autoReply.equals("Y")) //$NON-NLS-1$
+			wants = true;
+		
+		return wants;
+		
+	}
+	
+	/**
 	 * Returns true if this contact has Junk sender status
 	 * @return
 	 */
@@ -57,6 +96,31 @@ public class Contact {
 			junk = true;
 		
 		return junk;
+		
+	}
+	
+	/**
+	 * Populate this contact by the record id
+	 * @param database
+	 * @param id
+	 */
+	public Contact(DatabaseHelper database, int id){
+		
+		LOGGER.setLevel(LEVEL);
+		this.database = database;
+		
+		error = !populate("WHERE `id` = ?", "" + id); //$NON-NLS-1$ //$NON-NLS-2$
+		
+	}
+	
+	/**
+	 * True if errors while running populate (only initialised with 
+	 * Contact(db, id))
+	 * @return
+	 */
+	public boolean hasErrors(){
+		
+		return error;
 		
 	}
 	
@@ -171,10 +235,10 @@ public class Contact {
 					gender = contact.getString("gender"); //$NON-NLS-1$
 					
 					//Language ID
-					//languageID = contact.getInt("language_id"); //$NON-NLS-1$
+					languageID = contact.getInt("language_id"); //$NON-NLS-1$
 					
 					//Language
-					//language = contact.getString("language"); //$NON-NLS-1$
+					language = contact.getString("language"); //$NON-NLS-1$
 					
 					//Phone
 					if(checkNull(contact.getString("phone")) == null &&  //$NON-NLS-1$
@@ -216,7 +280,7 @@ public class Contact {
 					status = contact.getString("status"); //$NON-NLS-1$
 					
 					//Auto Reply
-					//autoReply = contact.getString("auto_reply"); //$NON-NLS-1$
+					autoReply = contact.getString("auto_reply"); //$NON-NLS-1$
 					
 					//Flag existing success
 					populateCustomFields();
