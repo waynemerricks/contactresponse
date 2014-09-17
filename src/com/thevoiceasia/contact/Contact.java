@@ -13,6 +13,8 @@ import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.commons.validator.routines.EmailValidator;
+
 import com.thevoiceasia.database.DatabaseHelper;
 import com.thevoiceasia.database.FieldMap;
 import com.thevoiceasia.user.FreeUsers;
@@ -98,6 +100,79 @@ public class Contact {
 		return junk;
 		
 	}
+	
+	/**
+	 * Helper method to return if email is set and valid
+	 * @return
+	 */
+	public boolean hasEmail(){
+		
+		boolean valid = false;
+		
+		if(email != null){
+			
+			EmailValidator ev = EmailValidator.getInstance(false);
+				
+			if(ev.isValid(email))
+				valid = true;
+			
+		}
+		
+		return valid;
+		
+	}
+	
+	/**
+	 * Gets the contacts phone number
+	 * @return
+	 */
+	public String getNumber(){
+		
+		return phoneNumber;
+		
+	}
+	
+	/**
+	 * Returns this contacts email address
+	 * @return
+	 */
+	public String getEmail(){
+		
+		return email;
+		
+	}
+	
+	/**
+	 * Helper method to return if number is set and valid for an SMS reply
+	 * @return
+	 */
+	public boolean hasSMSNumber(){
+		
+		boolean valid = false;
+		
+		if(phoneNumber != null){
+			
+			if(!phoneNumber.startsWith("0") && phoneNumber.length() == 12){ //$NON-NLS-1$
+				
+				valid = true;//need 12 numbers for an SMS
+				
+				for(int i = 0; i < phoneNumber.length(); i++){
+					
+					char c = phoneNumber.charAt(i);
+					
+					if(!Character.isDigit(c))
+						valid = false;//if we have odd chars in the number its not a usable SMS number
+					
+				}
+				
+			}
+			
+		}
+		
+		return valid;
+		
+	}
+	
 	
 	/**
 	 * Populate this contact by the record id
