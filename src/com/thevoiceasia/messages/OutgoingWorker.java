@@ -1,5 +1,6 @@
 package com.thevoiceasia.messages;
 
+import java.net.UnknownHostException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -11,6 +12,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.logging.Logger;
 
+import javax.mail.MessagingException;
+
 import com.thevoiceasia.contact.Contact;
 import com.thevoiceasia.database.DatabaseHelper;
 import com.thevoiceasia.database.KeyValue;
@@ -19,20 +22,33 @@ import com.thevoiceasia.sms.SMSSender;
 
 public class OutgoingWorker {
 
-	private static final boolean DEBUG = true;
 	private static final Logger LOGGER = Logger.getLogger("com.thevoiceasia.email"); //$NON-NLS-1$
 	
 	private DatabaseHelper database = null;
 	private HashMap<Integer, OutgoingTemplate> templates = null;//<template id, template>
 	private String host = null, user = null, password = null, 
-			templateBasePath = null;
+			templateBasePath = null, debugRecipient = null;
 	private ArrayList<KeyValue> languages = new ArrayList<KeyValue>();
 	private OutgoingQueue queue = null;
 	private PreparedStatement updateMessage = null;
+	private boolean DEBUG = false;
 	
+	/**
+	 * Grabs all the unsent outgoing messages in the messages table and
+	 * sends them with the relevant template 
+	 * @param emailServer
+	 * @param emailUser
+	 * @param emailPassword
+	 * @param databaseHost
+	 * @param databaseUser
+	 * @param databasePassword
+	 * @param databaseName
+	 * @param templatePath
+	 */
 	public OutgoingWorker(String emailServer, String emailUser, 
 			String emailPassword, String databaseHost, String databaseUser,
-			String databasePassword, String databaseName, String templatePath){
+			String databasePassword, String databaseName, String templatePath,
+			boolean debug){
 		
 		this.database = new DatabaseHelper(databaseHost, databaseName, 
 				databaseUser, databasePassword);
@@ -41,6 +57,7 @@ public class OutgoingWorker {
 		this.user = emailUser;
 		this.password = emailPassword;
 		this.templateBasePath = templatePath;
+		this.DEBUG = debug;
 		
 	}
 	
@@ -151,6 +168,10 @@ public class OutgoingWorker {
 		database.connect();
 		getLanguages();
 		getTemplates();
+		
+		if(DEBUG)
+			getDebugRecipient();
+		
 		queue = new OutgoingQueue(templates);
 		
 		String SQL = "SELECT `id`, `owner`, `created_by`, `type` FROM `messages` " + //$NON-NLS-1$
@@ -204,6 +225,15 @@ public class OutgoingWorker {
 		
 	}
 	
+	/**
+	 * Sets debugRecipient with the one in the settings table
+	 */
+	private void getDebugRecipient() {
+		// TODO Auto-generated method stub
+		debugRecipient = "waynemerricks@thevoiceasia.com"; //$NON-NLS-1$
+		
+	}
+
 	/**
 	 * Helper method to update status of a record in the messages table
 	 * @param id id of record
@@ -272,7 +302,6 @@ public class OutgoingWorker {
 	 */
 	private void sendMessages() {
 		
-		// TODO Auto-generated method stub
 		EmailSender email = new EmailSender(host, user, password);
 		SMSSender sms = new SMSSender(database);
 		
@@ -291,7 +320,7 @@ public class OutgoingWorker {
 					//Need to send this one
 					OutgoingMessage message = toSend.get(i);
 					
-					/* TODO get contact from message.owner figure out email or
+					/* Gget contact from message.owner figure out email or
 					 * sms and populate template with it.
 					 * 
 					 * Then send the thing and mark as sent/fail in DB
@@ -300,17 +329,114 @@ public class OutgoingWorker {
 					
 					if(!contact.hasErrors() && contact.wantsAutoReply()){
 						
-						//Contact hasn't opted out so send them the template
+						boolean sent = false;
+						OutgoingTemplate out = templates.get(message.type);
+						String from = out.getFrom();
 						
+						//Contact hasn't opted out so send them the template
+						if(contact.hasEmail()){//TODO prefers SMS
+							
+							String body = out.getEmailBody(
+									contact.getLanguageID());
+							body = substituteFields(body);
+							
+							String subject = out.getSubject(
+									contact.getLanguageID());
+							subject = substituteFields(subject);
+							
+							String to = contact.getEmail();
+							
+							if(DEBUG){
+								
+								body = "DEBUG: Recipient " + to + "\n" + body; //$NON-NLS-1$ //$NON-NLS-2$
+								to = debugRecipient;
+								
+							}
+								
+							try{
+								
+								if(email.sendEmail(to, from, 
+										subject, body))
+									sent = true;
+								
+							}catch(UnknownHostException e){
+								
+								LOGGER.warning("Unknown Host Exception"); //$NON-NLS-1$
+								e.printStackTrace();
+								
+							}catch(MessagingException e){
+								
+								LOGGER.warning("Messaging Exception"); //$NON-NLS-1$
+								e.printStackTrace();
+								
+							}
+								
+						}else if(contact.hasSMSNumber()){
+							
+							//Use SMS template (this costs money)
+							String text = out.getSMS(contact.getLanguageID());
+							text = substituteFields(text);
+							
+							if(!DEBUG){
+								if(sms.sendSMS(contact.getNumber(), text))
+									sent = true;
+							}else{
+								
+								//Send it as an email to Debug
+								try{
+									
+									if(email.sendEmail(debugRecipient, from, 
+											"SMS TO " + contact.getNumber(), //$NON-NLS-1$
+											text))
+										sent = true;
+									
+								}catch(UnknownHostException e){
+									
+									LOGGER.warning("Unknown Host Exception"); //$NON-NLS-1$
+									e.printStackTrace();
+									
+								}catch(MessagingException e){
+									
+									LOGGER.warning("Messaging Exception"); //$NON-NLS-1$
+									e.printStackTrace();
+									
+								}
+								
+							}
+							
+						}
+						
+						if(sent){
+							
+							//TODO Flag db as sent
+							
+						}else{
+							
+							//TODO Log contact as undeliverable and report to
+							//admin
+							
+						}
 						
 					}
-					
 					
 				}
 				
 			}
 			
 		}
+		
+	}
+
+	/**
+	 * Replaces known fields with contact information e.g. 
+	 * {{NAME}} = Contact.name
+	 * @param body from template with field codes
+	 * @return body with relevant substitutes
+	 */
+	private String substituteFields(String body) {
+		
+		// TODO Auto-generated method stub
+		return body;
 		
 	}
 
