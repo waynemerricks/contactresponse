@@ -44,6 +44,8 @@ public class OutgoingWorker {
 	 * @param databasePassword
 	 * @param databaseName
 	 * @param templatePath
+	 * @param debug if true all messages will be sent to the debugRecipient
+	 * as an email rather than out to contacts
 	 */
 	public OutgoingWorker(String emailServer, String emailUser, 
 			String emailPassword, String databaseHost, String databaseUser,
@@ -221,6 +223,14 @@ public class OutgoingWorker {
 		//Send out messages
 		sendMessages();
 		
+		//Close the updateMessages preparedStatement if we used it
+		if(updateMessage != null){
+			
+			close(updateMessage, null);
+			updateMessage = null;
+			
+		}
+		
 		database.disconnect();
 		
 	}
@@ -320,7 +330,7 @@ public class OutgoingWorker {
 					//Need to send this one
 					OutgoingMessage message = toSend.get(i);
 					
-					/* Gget contact from message.owner figure out email or
+					/* Get contact from message.owner figure out email or
 					 * sms and populate template with it.
 					 * 
 					 * Then send the thing and mark as sent/fail in DB
@@ -334,7 +344,7 @@ public class OutgoingWorker {
 						String from = out.getFrom();
 						
 						//Contact hasn't opted out so send them the template
-						if(contact.hasEmail()){//TODO prefers SMS
+						if(contact.hasEmail()){//TODO what if contact prefers SMS
 							
 							String body = out.getEmailBody(
 									contact.getLanguageID());
@@ -409,6 +419,7 @@ public class OutgoingWorker {
 						if(sent){
 							
 							//TODO Flag db as sent
+							updateMessage(message.id, "");
 							
 						}else{
 							
@@ -471,10 +482,34 @@ public class OutgoingWorker {
 	
 	/**
 	 * @param args
+	 * USAGE: 	EMAIL_HOST EMAIL_USER EMAIL_PASSWORD DATABASE_HOST DATABASE_USER 
+	 * 			DATABASE_PASSWORD DATABASE_NAME TEMPLATE_PATH [DEBUG]
 	 */
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-
+		
+		
+		if(args.length == 8 || args.length == 9){
+		
+			boolean debug = false;
+			
+			if(args.length == 9 && args[8].equalsIgnoreCase("debug")) //$NON-NLS-1$
+				debug = true;
+				
+			OutgoingWorker worker = new OutgoingWorker(args[0], args[1], 
+					args[2], args[3], args[4], args[5], args[6], args[7], 
+					debug);
+			
+			worker.processOutgoingMessages();
+			
+		}else{
+			
+			System.out.println("USAGE: EMAIL_HOST EMAIL_USER EMAIL_PASSWORD " + //$NON-NLS-1$
+					"DATABASE_HOST DATABASE_USER DATABASE_PASSWORD " + //$NON-NLS-1$
+					"DATABASE_NAME TEMPLATE_PATH [DEBUG]"); //$NON-NLS-1$
+			System.exit(1);
+			
+		}
+		
 	}
 
 }
