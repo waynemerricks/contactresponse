@@ -29,7 +29,7 @@ public class Contact {
 	private HashMap<String, String> custom = new HashMap<String, String>();
 	private FreeUsers users = null;
 	private int currentFreeUser = -1;
-	private boolean error = false;
+	private boolean error = false, idInitialise = false;
 	
 	private DatabaseHelper database = null;
 
@@ -38,6 +38,43 @@ public class Contact {
 	private static final String[] TABLES = {"contact_values_large",  //$NON-NLS-1$
 		"contact_values_medium", "contact_values_small"}; //$NON-NLS-1$ //$NON-NLS-2$
 	
+	/**
+	 * Creates a Contact and populates with info from the database 
+	 * @param database
+	 * @param email Email/SMS Email coming in
+	 * @param name Contact name if we got it from the email
+	 * @param sms true if this is an SMS message not an email
+	 */
+	public Contact(DatabaseHelper database, String email, String name,
+			boolean sms, FreeUsers users) {
+		
+		LOGGER.setLevel(LEVEL);
+		
+		this.name = name;
+		this.sms = sms;
+		this.database = database;
+		this.users = users;
+		
+		/* Search via email or sms, don't use name as identifier as we have no 
+		 * way to tell which Mr Singh is this Mr Singh.
+		 * 
+		 * This will inevitably lead to some duplicates if we have old contacts
+		 * who don't have an email/sms in the db yet
+		 */
+		if(sms){//XpressMS = 1234567890@sms.xpressms.com
+			
+			phoneNumber = email.split("@")[0];  //$NON-NLS-1$
+			populateByPhone();
+			
+		}else{
+			
+			this.email = email;
+			populateByEmail();
+			
+		}
+		
+	}
+
 	/**
 	 * Creates a contact object with default values (no DB lookups)
 	 */
@@ -48,6 +85,21 @@ public class Contact {
 		
 	}
 	
+	/**
+	 * Populate this contact by the record id
+	 * @param database
+	 * @param id
+	 */
+	public Contact(DatabaseHelper database, int id){
+		
+		LOGGER.setLevel(LEVEL);
+		this.database = database;
+		idInitialise = true;
+		error = !populate("WHERE `contacts`.`id` = ?", "" + id); //$NON-NLS-1$ //$NON-NLS-2$
+		
+	}
+	
+
 	/**
 	 * Returns languageID
 	 * @return -1 by default/not set
@@ -173,21 +225,6 @@ public class Contact {
 		
 	}
 	
-	
-	/**
-	 * Populate this contact by the record id
-	 * @param database
-	 * @param id
-	 */
-	public Contact(DatabaseHelper database, int id){
-		
-		LOGGER.setLevel(LEVEL);
-		this.database = database;
-		
-		error = !populate("WHERE `id` = ?", "" + id); //$NON-NLS-1$ //$NON-NLS-2$
-		
-	}
-	
 	/**
 	 * True if errors while running populate (only initialised with 
 	 * Contact(db, id))
@@ -199,43 +236,6 @@ public class Contact {
 		
 	}
 	
-	/**
-	 * Creates a Contact and populates with info from the database 
-	 * @param database
-	 * @param email Email/SMS Email coming in
-	 * @param name Contact name if we got it from the email
-	 * @param sms true if this is an SMS message not an email
-	 */
-	public Contact(DatabaseHelper database, String email, String name,
-			boolean sms, FreeUsers users) {
-		
-		LOGGER.setLevel(LEVEL);
-		
-		this.name = name;
-		this.sms = sms;
-		this.database = database;
-		this.users = users;
-		
-		/* Search via email or sms, don't use name as identifier as we have no 
-		 * way to tell which Mr Singh is this Mr Singh.
-		 * 
-		 * This will inevitably lead to some duplicates if we have old contacts
-		 * who don't have an email/sms in the db yet
-		 */
-		if(sms){//XpressMS = 1234567890@sms.xpressms.com
-			
-			phoneNumber = email.split("@")[0];  //$NON-NLS-1$
-			populateByPhone();
-			
-		}else{
-			
-			this.email = email;
-			populateByEmail();
-			
-		}
-		
-	}
-
 	/**
 	 * Populates contact from DB by phone number
 	 * Will create if contact does not exist
@@ -323,11 +323,23 @@ public class Contact {
 						phoneNumber = contact.getString("phone"); //$NON-NLS-1$
 					
 					//Email
-					if(checkNull(contact.getString("email")) == null &&  //$NON-NLS-1$
-							email != null)
-						updateEmail();
-					else if(checkNull(contact.getString("phone")) != null) //$NON-NLS-1$
-						phoneNumber = contact.getString("phone"); //$NON-NLS-1$
+					if(!idInitialise){
+						
+						if(checkNull(contact.getString("email")) == null &&  //$NON-NLS-1$
+								email != null)
+							updateEmail();//Else Phone
+						else if(checkNull(contact.getString("phone")) != null) //$NON-NLS-1$
+							phoneNumber = contact.getString("phone"); //$NON-NLS-1$
+					}else{
+						
+						//Just read the details from the DB
+						if(checkNull(contact.getString("email")) != null) //$NON-NLS-1$
+							email = contact.getString("email"); //$NON-NLS-1$
+						
+						if(checkNull(contact.getString("phone")) != null) //$NON-NLS-1$
+							phoneNumber = contact.getString("phone"); //$NON-NLS-1$
+						
+					}
 					
 					//Photo
 					//photo = contact.getString("photo"); //$NON-NLS-1$
@@ -335,15 +347,18 @@ public class Contact {
 					//Assigned User
 					assignedUser = contact.getInt("assigned_user_id"); //$NON-NLS-1$
 					
-					int nextFreeUser = users.getNextAvailableUser();
-					
-					if(assignedUser == 0 && nextFreeUser != -1){//Update assignedUser						
-						assignedUser = nextFreeUser;
-						currentFreeUser = nextFreeUser;
-						updateAssignedUser();
+					if(!idInitialise){
+						
+						int nextFreeUser = users.getNextAvailableUser();
+						
+						if(assignedUser == 0 && nextFreeUser != -1){//Update assignedUser						
+							assignedUser = nextFreeUser;
+							currentFreeUser = nextFreeUser;
+							updateAssignedUser();
+							
+						}
 						
 					}
-					
 					//Created
 					//created = contact.getLong("created"); //$NON-NLS-1$
 					
