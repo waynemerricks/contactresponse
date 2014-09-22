@@ -172,7 +172,7 @@ public class OutgoingTemplate {
 							returnValues[0] = line.substring(2);//Subject
 							
 						}else
-							returnValues[1] += line + "\n"; //$NON-NLS-1$
+							returnValues[returnValues.length - 1] += line + "\n"; //$NON-NLS-1$
 							
 					}
 					
