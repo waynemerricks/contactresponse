@@ -26,6 +26,8 @@ public class OutgoingWorker {
 	
 	private DatabaseHelper database = null;
 	private HashMap<Integer, OutgoingTemplate> templates = null;//<template id, template>
+	private HashMap<Integer, String> users = null;//<user id, user name?>
+	
 	private String host = null, user = null, password = null, 
 			templateBasePath = null, debugRecipient = null;
 	private ArrayList<KeyValue> languages = new ArrayList<KeyValue>();
@@ -107,7 +109,7 @@ public class OutgoingWorker {
 		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss"); //$NON-NLS-1$
 		
 		String SQL = "SELECT `id`, `from`, `date`, `exclusive`, `priority` " + //$NON-NLS-1$
-				"FROM `templates` WHERE `date` = NULL OR `date` = " + //$NON-NLS-1$
+				"FROM `templates` WHERE `date` IS NULL OR `date` = " + //$NON-NLS-1$
 				sdf.format(new Date()); 
 		
 		Statement selectTemplates = null;
@@ -239,7 +241,38 @@ public class OutgoingWorker {
 	 * Sets debugRecipient with the one in the settings table
 	 */
 	private void getDebugRecipient() {
-		// TODO Auto-generated method stub
+		
+		String SQL = "SELECT `value` FROM `settings` WHERE `name` = " + //$NON-NLS-1$
+				"'debugRecipient'"; //$NON-NLS-1$
+		
+		Statement selectRecipient = null;
+		ResultSet results = null;
+		
+				
+		try{
+			
+			selectRecipient = database.getConnection().createStatement();
+			
+			if(selectRecipient.execute(SQL)){
+				
+				results = selectRecipient.getResultSet();
+				
+				while(results.next())
+					debugRecipient = results.getString("value"); //$NON-NLS-1$
+					
+			}
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Unable to read debugRecipient from Settings table"); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(selectRecipient, results);
+			
+		}
+		
 		debugRecipient = "waynemerricks@thevoiceasia.com"; //$NON-NLS-1$
 		
 	}
@@ -327,6 +360,9 @@ public class OutgoingWorker {
 				
 				if(!toSend.get(i).archive){
 					
+					if(users == null)
+						populateUsers();
+					
 					//Need to send this one
 					OutgoingMessage message = toSend.get(i);
 					
@@ -336,6 +372,7 @@ public class OutgoingWorker {
 					 * Then send the thing and mark as sent/fail in DB
 					 */
 					Contact contact = new Contact(database, id);
+					boolean sentSMS = false;
 					
 					if(!contact.hasErrors() && contact.wantsAutoReply()){
 						
@@ -348,11 +385,13 @@ public class OutgoingWorker {
 							
 							String body = out.getEmailBody(
 									contact.getLanguageID());
-							body = substituteFields(body);
+							body = substituteFields(body, contact, 
+									users.get(message.createdBy));
 							
 							String subject = out.getSubject(
 									contact.getLanguageID());
-							subject = substituteFields(subject);
+							subject = substituteFields(subject, contact, 
+									users.get(message.createdBy));
 							
 							String to = contact.getEmail();
 							
@@ -385,13 +424,15 @@ public class OutgoingWorker {
 							
 							//Use SMS template (this costs money)
 							String text = out.getSMS(contact.getLanguageID());
-							text = substituteFields(text);
+							text = substituteFields(text, contact, 
+									users.get(message.createdBy));
 							
 							if(!DEBUG){
 								if(sms.sendSMS(contact.getNumber(), text))
 									sent = true;
 							}else{
 								
+								sentSMS = true;
 								//Send it as an email to Debug
 								try{
 									
@@ -418,13 +459,24 @@ public class OutgoingWorker {
 						
 						if(sent){
 							
-							//TODO Flag db as sent
-							updateMessage(message.id, "");
+							//Flag db as sent
+							String sentStatus = "S"; //$NON-NLS-1$
+							
+							if(sentSMS)
+								sentStatus = "T"; //$NON-NLS-1$
+							
+							updateMessage(message.id, sentStatus);
 							
 						}else{
 							
-							//TODO Log contact as undeliverable and report to
+							//Log contact as undeliverable and report to
 							//admin
+							String errorStatus = "E"; //$NON-NLS-1$
+							
+							if(sentSMS)
+								errorStatus = "F"; //$NON-NLS-1$
+							
+							updateMessage(message.id, errorStatus);
 							
 						}
 						
@@ -439,14 +491,78 @@ public class OutgoingWorker {
 	}
 
 	/**
+	 * Reads in user ids and names from the users table
+	 */
+	private void populateUsers() {
+		
+		String SQL = "SELECT `id`, `name` FROM `users`"; //$NON-NLS-1$
+		
+		Statement selectUsers = null;
+		ResultSet results = null;
+		
+		try{
+			
+			selectUsers = database.getConnection().createStatement();
+			
+			if(selectUsers.execute(SQL)){
+				
+				results = selectUsers.getResultSet();
+				users = new HashMap<Integer, String>();
+				
+				while(results.next()){
+					
+					users.put(results.getInt("id"),  //$NON-NLS-1$
+							results.getString("name")); //$NON-NLS-1$
+					
+				}
+				
+			}
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Unable to read users from users table"); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(selectUsers, results);
+			
+		}
+		
+	}
+
+	/**
 	 * Replaces known fields with contact information e.g. 
 	 * {{NAME}} = Contact.name
 	 * @param body from template with field codes
+	 * @param contact Contact object representing this recipient
+	 * @param userName Name of the user who created this reply e.g. John Smith 
 	 * @return body with relevant substitutes
 	 */
-	private String substituteFields(String body) {
+	private String substituteFields(String body, Contact contact, 
+			String userName) {
 		
-		// TODO Auto-generated method stub
+		// TODO Any others?
+		if(body.contains("{{NAME}}")) //$NON-NLS-1$
+			body.replaceAll("{{NAME}}", contact.getName()); //$NON-NLS-1$
+		
+		if(body.contains("{{DAY}}")){ //$NON-NLS-1$
+			
+			SimpleDateFormat sdf = new SimpleDateFormat("EEEE"); //$NON-NLS-1$
+			body.replaceAll("{{DAY}}", sdf.format(new Date())); //$NON-NLS-1$
+			
+		}
+		
+		if(body.contains("{{DATE}}")){ //$NON-NLS-1$
+			
+			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd"); //$NON-NLS-1$
+			body.replaceAll("{{DATE}}", sdf.format(new Date())); //$NON-NLS-1$
+			
+		}
+		
+		if(body.contains("{{USER}}")) //$NON-NLS-1$
+			body.replaceAll("{{USER}}", userName); //$NON-NLS-1$
+			
 		return body;
 		
 	}
