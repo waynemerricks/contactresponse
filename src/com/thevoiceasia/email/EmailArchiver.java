@@ -207,7 +207,7 @@ public class EmailArchiver extends MessageArchiver implements EmailReader {
 		String type = "E"; //$NON-NLS-1$
 		boolean sms = false;
 		
-		if(from.contains("@sms.xpressms.com")){ //$NON-NLS-1$
+		if(from.contains("@sms.xpressms.com")){ //$NON-NLS-1$ //TODO move to settings DB
 		
 			sms = true;
 			type = "S"; //$NON-NLS-1$
