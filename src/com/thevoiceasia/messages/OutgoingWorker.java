@@ -1,5 +1,11 @@
 package com.thevoiceasia.messages;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.UnknownHostException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -34,6 +40,7 @@ public class OutgoingWorker {
 	private OutgoingQueue queue = null;
 	private PreparedStatement updateMessage = null;
 	private boolean DEBUG = false;
+	private String emailFooter = null;
 	
 	/**
 	 * Grabs all the unsent outgoing messages in the messages table and
@@ -133,6 +140,11 @@ public class OutgoingWorker {
 					if(results.getString("exclusive").equals("Y"))  //$NON-NLS-1$//$NON-NLS-2$
 						exclusive = true;
 					
+					KeyValue[] languageArray = new KeyValue[languages.size()];
+					
+					for(int i = 0; i < languages.size(); i++)
+						languageArray[i] = languages.get(i);
+					
 					OutgoingTemplate out = new OutgoingTemplate(
 							results.getInt("id"), //$NON-NLS-1$
 							results.getString("from"), //$NON-NLS-1$
@@ -140,7 +152,7 @@ public class OutgoingWorker {
 							results.getInt("priority"), //$NON-NLS-1$
 							results.getString("date"),//$NON-NLS-1$
 							templateBasePath,
-							(KeyValue[])languages.toArray()); 
+							languageArray); 
 					
 					templates.put(out.getId(), out);
 					
@@ -401,6 +413,9 @@ public class OutgoingWorker {
 								to = debugRecipient;
 								
 							}
+							
+							//Append Footer
+							body = body + "\n" + getEmailFooter(); //$NON-NLS-1$
 								
 							try{
 								
@@ -465,7 +480,8 @@ public class OutgoingWorker {
 							if(sentSMS)
 								sentStatus = "T"; //$NON-NLS-1$
 							
-							updateMessage(message.id, sentStatus);
+							if(!DEBUG)
+								updateMessage(message.id, sentStatus);
 							
 						}else{
 							
@@ -476,7 +492,8 @@ public class OutgoingWorker {
 							if(sentSMS)
 								errorStatus = "F"; //$NON-NLS-1$
 							
-							updateMessage(message.id, errorStatus);
+							if(!DEBUG)
+								updateMessage(message.id, errorStatus);
 							
 						}
 						
@@ -487,6 +504,151 @@ public class OutgoingWorker {
 			}
 			
 		}
+		
+	}
+
+	/**
+	 * Reads the given file and returns the content
+	 * @param path path to read
+	 * @return String of the content read
+	 */
+	private String readTemplateFile(String path){
+		
+		File template = new File(path);
+		BufferedReader reader = null;
+		String content = ""; //$NON-NLS-1$
+		
+		if(template.exists() && template.canRead()){
+			
+			try{
+				
+				reader = new BufferedReader(
+						new FileReader(template));
+				
+				boolean done = false;
+				
+				while(!done){
+					
+					String line = reader.readLine();
+					
+					if(line == null)
+						done = true;
+					else
+						content += line + "\n"; //$NON-NLS-1$
+						
+				}
+				
+			}catch(FileNotFoundException e){
+				
+				LOGGER.severe("Template file not found " + template.getName()); //$NON-NLS-1$
+				e.printStackTrace();
+				
+			}catch(IOException e){
+				
+				LOGGER.severe("Template IO Error " + template.getName()); //$NON-NLS-1$
+				e.printStackTrace();
+				
+			}finally{
+				
+				if(reader != null){
+					
+					try{
+						reader.close();
+					}catch(Exception e){}
+					
+					reader = null;
+					
+				}
+				
+			}
+			
+		}
+		
+		return content;
+		
+	}
+	
+	/**
+	 * Gets the footer from the database and reads it into a string
+	 * @return
+	 */
+	private String getEmailFooter() {
+		
+		String footer = null;
+		
+		if(emailFooter == null){
+			
+			String SQL = "SELECT `value` FROM `settings` WHERE `name` = " + //$NON-NLS-1$
+					"'emailFooter'"; //$NON-NLS-1$
+			
+			Statement selectFooter = null;
+			ResultSet results = null;
+			
+			try{
+				
+				selectFooter = database.getConnection().createStatement();
+				
+				if(selectFooter.execute(SQL)){
+					
+					results = selectFooter.getResultSet();
+					
+					while(results.next())
+						emailFooter = results.getString("value"); //$NON-NLS-1$
+						
+				}
+				
+				if(!emailFooter.startsWith("exec ")){ //$NON-NLS-1$
+					
+					//Not a command to execute so read from template file
+					//email footer
+					emailFooter = readTemplateFile(templateBasePath + 
+							System.getProperty("file.separator") + //$NON-NLS-1$
+							emailFooter);
+					
+				}
+					
+				
+			}catch(SQLException e){
+				
+				LOGGER.severe("Error looking up email footer"); //$NON-NLS-1$
+				e.printStackTrace();
+				
+			}finally{
+				
+				close(selectFooter, results);
+				
+			}
+			
+			
+		}
+		
+		if(emailFooter.startsWith("exec ")){ //$NON-NLS-1$
+			
+			try{
+				
+				Process p = Runtime.getRuntime().exec(emailFooter.substring(5));
+				p.waitFor();
+				
+				BufferedReader reader = new BufferedReader(
+						new InputStreamReader(p.getInputStream()));
+				
+				String line = ""; //$NON-NLS-1$
+				footer = ""; //$NON-NLS-1$
+				
+				while((line = reader.readLine()) != null)
+					footer += line + "\n";  //$NON-NLS-1$
+				
+			}catch(Exception e){
+				
+				LOGGER.severe("Error while executing footer command"); //$NON-NLS-1$
+				e.printStackTrace();
+				
+			}
+			
+		}else
+			footer = emailFooter;
+		
+		return footer;
 		
 	}
 
@@ -540,28 +702,47 @@ public class OutgoingWorker {
 	 * @return body with relevant substitutes
 	 */
 	private String substituteFields(String body, Contact contact, 
-			String userName) {
+			String userName){
 		
 		// TODO Any others?
-		if(body.contains("{{NAME}}")) //$NON-NLS-1$
-			body.replaceAll("{{NAME}}", contact.getName()); //$NON-NLS-1$
+		if(body.contains("{{NAME}}")){ //$NON-NLS-1$
+			
+			String name = contact.getName();
+			
+			if(name == null)
+				name = ""; //$NON-NLS-1$
+				
+			body = body.replaceAll("\\{\\{NAME\\}\\}", //$NON-NLS-1$
+					name);
+			
+			if(name.equals("")){ //$NON-NLS-1$
+				
+				//Remove potential double spaces e.g. Hi {{NAME}} blah
+				//becomes "Hi  blah" instead of "Hi blah"
+				body = body.trim().replaceAll(" +", " "); //$NON-NLS-1$ //$NON-NLS-2$
+				
+			}
+		}
 		
 		if(body.contains("{{DAY}}")){ //$NON-NLS-1$
 			
 			SimpleDateFormat sdf = new SimpleDateFormat("EEEE"); //$NON-NLS-1$
-			body.replaceAll("{{DAY}}", sdf.format(new Date())); //$NON-NLS-1$
+			body = body.replaceAll("\\{\\{DAY\\}\\}", //$NON-NLS-1$
+					sdf.format(new Date())); 
 			
 		}
 		
 		if(body.contains("{{DATE}}")){ //$NON-NLS-1$
 			
 			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd"); //$NON-NLS-1$
-			body.replaceAll("{{DATE}}", sdf.format(new Date())); //$NON-NLS-1$
+			body = body.replaceAll("\\{\\{DATE\\}\\}", //$NON-NLS-1$
+					sdf.format(new Date())); 
 			
 		}
 		
 		if(body.contains("{{USER}}")) //$NON-NLS-1$
-			body.replaceAll("{{USER}}", userName); //$NON-NLS-1$
+			body = body.replaceAll("\\{\\{USER\\}\\}", //$NON-NLS-1$ 
+					userName); 
 			
 		return body;
 		
