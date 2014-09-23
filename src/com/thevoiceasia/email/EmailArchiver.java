@@ -207,7 +207,15 @@ public class EmailArchiver extends MessageArchiver implements EmailReader {
 		String type = "E"; //$NON-NLS-1$
 		boolean sms = false;
 		
-		if(from.contains("@sms.xpressms.com")){ //$NON-NLS-1$ //TODO move to settings DB
+		if(!isDatabaseConnected()){
+			
+			connectToDB();
+			readDatabaseValues();//Grab routing and sms to/from address from DB
+			initialiseFreeUsers();
+			
+		}
+
+		if(from.contains(smsFromEmail)){ 
 		
 			sms = true;
 			type = "S"; //$NON-NLS-1$
@@ -226,14 +234,6 @@ public class EmailArchiver extends MessageArchiver implements EmailReader {
 		
 		body = stripExcessiveNewLines(body);
 		subject = stripExcessiveNewLines(subject);
-		
-		if(!isDatabaseConnected()){
-			
-			connectToDB();
-			readDatabaseValues();//Grab routing and sms to address from DB
-			initialiseFreeUsers();
-			
-		}
 		
 		Contact contact = new Contact(database, from, name, sms, getFreeUsers());
 		
