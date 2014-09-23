@@ -242,8 +242,47 @@ public class Contact {
 	 */
 	private void populateByPhone(){
 	
-		if(!populate("WHERE `phone` LIKE ?", "%" + phoneNumber)) //$NON-NLS-1$ //$NON-NLS-2$
+		if(!populate("WHERE `phone` LIKE ?", "%" + phoneNumber) && //$NON-NLS-1$ //$NON-NLS-2$
+				!checkCustomPhone("%phoneNumber")) //$NON-NLS-1$
 			createNewContact();
+		
+	}
+	
+	private boolean checkCustomPhone(String phone){
+		
+		boolean found = false;
+		
+		/*PreparedStatement select = null;
+		ResultSet results = null;
+		
+		String SQL = "SELECT `owner_id` FROM `contact_values_small` " + //$NON-NLS-1$
+				"WHERE `id` = 4 AND `value` LIKE ?"; //$NON-NLS-1$
+		
+		try{
+			
+			select = database.getConnection().prepareStatement(SQL);
+			select.setString(1, phone);
+			
+			if(select.execute()){
+				
+				results = select.getResultSet();
+				//TODO Multiple contacts with same phone number? Pick oldest?
+				
+			}
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Error looking up custom phones"); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(select, results);
+			
+		}*/
+		
+		
+		return found;
 		
 	}
 	
