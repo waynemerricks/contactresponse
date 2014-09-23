@@ -22,6 +22,7 @@ public class MessageArchiver extends Thread{
 
 	//Variables accessible to any class that extends this
 	private String smsEmail = null;
+	protected String smsFromEmail = null;
 	protected boolean archiveValid = false;
 	private boolean connected = false;
 	protected DatabaseHelper database = null;
@@ -254,13 +255,16 @@ public class MessageArchiver extends Thread{
 		try{
 			
 			getSMS = database.getConnection().createStatement();
-			getSMS.execute("SELECT `value` FROM `settings` WHERE `name` = " + //$NON-NLS-1$
-					"'smsEmail'"); //$NON-NLS-1$
+			getSMS.execute("SELECT `value`, `name` FROM `settings` WHERE " + //$NON-NLS-1$
+					"`name` = 'smsEmail' OR `name` = 'smsFromEmail'"); //$NON-NLS-1$
 			results = getSMS.getResultSet();
 			
 			while(results.next()){
 				
-				smsEmail = results.getString("value"); //$NON-NLS-1$
+				if(results.getString("name").equals("smsFromEmail"))  //$NON-NLS-1$//$NON-NLS-2$
+					smsFromEmail = results.getString("value"); //$NON-NLS-1$
+				else
+					smsEmail = results.getString("value"); //$NON-NLS-1$
 				
 			}
 			
