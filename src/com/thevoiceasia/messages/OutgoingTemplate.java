@@ -23,6 +23,7 @@ public class OutgoingTemplate {
 	private Date date = null;
 	private SimpleDateFormat mysqlTimeStamp = 
 			new SimpleDateFormat("yyyyMMddHHmmss"); //$NON-NLS-1$
+	private KeyValue[] languages = null;
 	
 	protected static final Logger LOGGER = Logger.getLogger("com.thevoiceasia.messages.OutgoingTemplate"); //$NON-NLS-1$
 	protected static final Level LEVEL = Level.INFO;//Logging level of this class
@@ -42,6 +43,7 @@ public class OutgoingTemplate {
 		
 		LOGGER.setLevel(LEVEL);
 		
+		this.languages = languages;
 		this.id = id;
 		this.from = from;
 		this.exclusive = exclusive;
@@ -65,16 +67,21 @@ public class OutgoingTemplate {
 			TemplateContainer tc = new TemplateContainer();
 			
 			//EMAIL
-			String[] temp = readTemplateFile(base + "_email_" + languages[i].value); //$NON-NLS-1$
+			String languagePath = ""; //$NON-NLS-1$
+			
+			if(languages[i].value.length() > 0)
+				languagePath += "_" + languages[i].value; //$NON-NLS-1$
+			
+			String[] temp = readTemplateFile(base + "_email" + languagePath);  //$NON-NLS-1$
 			tc.subject = temp[0];
 			tc.email = temp[1];
 			
 			//SMS
-			temp = readTemplateFile(base + "_sms_" + languages[i].value); //$NON-NLS-1$
+			temp = readTemplateFile(base + "_sms" + languagePath); //$NON-NLS-1$
 			tc.sms = temp[0];
 			
 			//LETTER
-			temp = readTemplateFile(base + "_letter_" + languages[i].value); //$NON-NLS-1$
+			temp = readTemplateFile(base + "_letter" + languagePath); //$NON-NLS-1$
 			tc.letter = temp[0];
 			
 			//Add to map
@@ -85,13 +92,45 @@ public class OutgoingTemplate {
 	}
 	
 	/**
+	 * Gets the mapped language id
+	 * @param language language to lookup
+	 * @return 0 if we are the parent language, else id of the parent language
+	 */
+	private int getMappedLanguage(int language){
+		
+		int mapped = -1;
+		int i = 0;
+		
+		while(mapped == -1 && i < languages.length){
+			
+			if(languages[i].key.equals("" + language)) //$NON-NLS-1$
+				mapped = Integer.parseInt(languages[i].mapped);
+			
+			i++;
+			
+		}
+		
+		return mapped;
+		
+	}
+	
+	/**
 	 * Gets the SMS template for the given language
 	 * @param language use language id in languages table
 	 * @return
 	 */
 	public String getSMS(int language){
 		
-		return languageContent.get(language).sms;
+		String content = null;
+		
+		int mapped = getMappedLanguage(language);
+		
+		if(mapped == 0)
+			content = languageContent.get(language).sms;
+		else
+			content = languageContent.get(mapped).sms;
+		
+		return content;
 		
 	}
 	
@@ -102,7 +141,16 @@ public class OutgoingTemplate {
 	 */
 	public String getSubject(int language){
 		
-		return languageContent.get(language).subject;
+		String subject = null;
+		
+		int mapped = getMappedLanguage(language);
+		
+		if(mapped == 0)
+			subject = languageContent.get(language).subject;
+		else
+			subject = languageContent.get(mapped).subject;
+		
+		return subject;
 		
 	}
 	
@@ -113,7 +161,16 @@ public class OutgoingTemplate {
 	 */
 	public String getEmailBody(int language){
 		
-		return languageContent.get(language).email;
+		String content = null;
+		
+		int mapped = getMappedLanguage(language);
+		
+		if(mapped == 0)
+			content = languageContent.get(language).email;
+		else
+			content = languageContent.get(mapped).email;
+		
+		return content;
 		
 	}
 	
@@ -124,7 +181,9 @@ public class OutgoingTemplate {
 	 */
 	public String getLetter(int language){
 		
-		return languageContent.get(language).letter;
+		//Using Email Template for now as content will be the same
+		//until we find out feet
+		return getEmailBody(language);//languageContent.get(language).letter;
 		
 	}
 	
