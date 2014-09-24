@@ -22,7 +22,8 @@ import com.thevoiceasia.user.FreeUsers;
 public class Contact {
 
 	private String name = null, email = null, gender = null, phoneNumber = null,
-			  status = null, language = null, autoReply = null;//photo = null, 
+			  status = null, language = null, autoReply = null, 
+			  mappedLanguage = null;//photo = null, 
 	private int id = -1, assignedUser = -1, languageID = -1; 
 	private long updated = -1;//, created = -1; 
 	private boolean sms = false;
@@ -119,6 +120,16 @@ public class Contact {
 	public String getLanguageName(){
 		
 		return language;
+		
+	}
+	
+	/**
+	 * Returns the name of the language we're mapped to
+	 * @return
+	 */
+	public String getMappedLanguage(){
+		
+		return mappedLanguage;
 		
 	}
 	
@@ -313,7 +324,8 @@ public class Contact {
 		
 		String SQL = 
 				"SELECT `contacts`.`id`, `contacts`.`name`, `contacts`.`gender`, " + //$NON-NLS-1$
-				"	`languages`.`language`, `contacts`.`language_id`, " + //$NON-NLS-1$
+				"	`languages`.`language`, `languages`.`mappedTo`," + //$NON-NLS-1$
+				"   `contacts`.`language_id`, " + //$NON-NLS-1$
 				"	`contacts`.`phone`, " + //$NON-NLS-1$
 				"	`contacts`.`email`, `contacts`.`photo`, " + //$NON-NLS-1$
 				"	`contacts`.`assigned_user_id`, `contacts`.`created`, " + //$NON-NLS-1$
@@ -353,6 +365,13 @@ public class Contact {
 					
 					//Language
 					language = contact.getString("language"); //$NON-NLS-1$
+					
+					//Get Mapped Language
+					if(contact.getInt("mappedTo") == 0) //$NON-NLS-1$
+						mappedLanguage = language;
+					else
+						mappedLanguage = getMappedLanguage(contact.getInt(
+							"mappedTo")); //$NON-NLS-1$
 					
 					//Phone
 					if(checkNull(contact.getString("phone")) == null &&  //$NON-NLS-1$
@@ -434,6 +453,46 @@ public class Contact {
 		
 	}
 	
+	/**
+	 * Gets the language which this id is mapped to e.g. Unknown = English,
+	 * Punjabi = Roman Hindi etc
+	 * Used solely for sending out replies so we can select an appropriate
+	 * language without having to make templates for all the languages
+	 * @param id to lookup in languages table
+	 * @return name of the language we're mapped to
+	 */
+	private String getMappedLanguage(int id) {
+		
+		String mapped = null;
+		
+		Statement selectMap = null;
+		ResultSet results = null;
+		
+		try{
+			
+			String SQL = "SELECT `language` FROM `languages` WHERE `id` = " + id; //$NON-NLS-1$
+			selectMap = database.getConnection().createStatement();
+			
+			if(selectMap.execute(SQL)){
+				
+				results = selectMap.getResultSet();
+				
+				while(results.next())
+					mapped = results.getString("language"); //$NON-NLS-1$
+					
+			}
+				
+		}catch(SQLException e){
+			
+			LOGGER.severe("Error getting mapped language: " + id); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}
+		
+		return mapped;
+		
+	}
+
 	/**
 	 * Updates the assigned user of this contact and adds one to the contact
 	 * count of the assigned user
@@ -1090,5 +1149,5 @@ public class Contact {
 		}
 		
 	}
-	
+
 }
