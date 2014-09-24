@@ -263,15 +263,27 @@ public class Contact {
 				createNewContact();
 			else{
 				
-				//TODO populate by id
+				//Populate by id
+				idInitialise = true;
+				error = !populate("WHERE `contacts`.`id` = ?", "" + id); //$NON-NLS-1$ //$NON-NLS-2$
 				
 			}
 			 
-		}
-			
+		}	
 			
 	}
 	
+	/**
+	 * Checks custom fields for the given email
+	 * @param emailSearch What to search for
+	 * @return owner id or -1 if not found
+	 */
+	private int checkCustomEmail(String emailSearch) {
+		
+		return checkCustomField(emailSearch, 3, "contact_values_medium"); //$NON-NLS-1$
+		
+	}
+
 	/**
 	 * Checks custom fields for the given phone number
 	 * @param phone
@@ -279,19 +291,32 @@ public class Contact {
 	 */
 	private int checkCustomPhone(String phone){
 		
+		return checkCustomField(phone, 4, "contact_values_small"); //$NON-NLS-1$
+		
+	}
+	
+	/**
+	 * Checks custom fields for the given custom field type
+	 * @param term term to search for
+	 * @param fieldType id of the field to search for
+	 * @param tableName table to search
+	 * @return owner id or -1 if not found
+	 */
+	private int checkCustomField(String term, int fieldType, String tableName){
+		
 		int owner = -1;
 		
 		PreparedStatement select = null;
 		ResultSet results = null;
 		
 		//ID = 4 is the alternate phone custom field
-		String SQL = "SELECT `owner_id` FROM `contact_values_small` " + //$NON-NLS-1$
-				"WHERE `id` = 4 AND `value` LIKE ?"; //$NON-NLS-1$
+		String SQL = "SELECT `owner_id` FROM `" + tableName + "` " + //$NON-NLS-1$ //$NON-NLS-2$
+				"WHERE `id` = " + fieldType + " AND `value` LIKE ?"; //$NON-NLS-1$ //$NON-NLS-2$
 		
 		try{
 			
 			select = database.getConnection().prepareStatement(SQL);
-			select.setString(1, phone);
+			select.setString(1, term);
 			
 			if(select.execute()){
 				
@@ -317,7 +342,8 @@ public class Contact {
 			
 		}catch(SQLException e){
 			
-			LOGGER.severe("Error looking up custom phones"); //$NON-NLS-1$
+			LOGGER.severe("Error looking up custom field " + fieldType +  //$NON-NLS-1$
+					" in table " + tableName); //$NON-NLS-1$
 			e.printStackTrace();
 			
 		}finally{
@@ -338,6 +364,22 @@ public class Contact {
 		
 		if(!populate("WHERE `email` = ?", email)) //$NON-NLS-1$
 			createNewContact();
+		
+		if(!populate("WHERE `email` = ?", email)){//$NON-NLS-1$
+			
+			int contact = checkCustomEmail(email);
+			
+			if(contact == -1)
+				createNewContact();
+			else{
+				
+				//Populate by id
+				idInitialise = true;
+				error = !populate("WHERE `contacts`.`id` = ?", "" + id); //$NON-NLS-1$ //$NON-NLS-2$
+				
+			}
+			 
+		}
 		
 	}
 	
