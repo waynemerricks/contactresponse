@@ -40,7 +40,7 @@ public class OutgoingWorker {
 	private OutgoingQueue queue = null;
 	private PreparedStatement updateMessage = null;
 	private boolean DEBUG = false;
-	private String emailFooter = null;
+	private HashMap<String, String> footers = null;
 	
 	/**
 	 * Grabs all the unsent outgoing messages in the messages table and
@@ -92,7 +92,8 @@ public class OutgoingWorker {
 				
 				while(results.next())
 					languages.add(new KeyValue("" + results.getInt("id"),   //$NON-NLS-1$//$NON-NLS-2$
-							results.getString("language").toLowerCase()));  //$NON-NLS-1$
+							results.getString("language").toLowerCase(), //$NON-NLS-1$
+							results.getString("mappedTo")));  //$NON-NLS-1$
 				
 			}
 			
@@ -415,7 +416,8 @@ public class OutgoingWorker {
 							}
 							
 							//Append Footer
-							body = body + "\n" + getEmailFooter(); //$NON-NLS-1$
+							body = body + "\n" + getEmailFooter( //$NON-NLS-1$
+									contact.getMappedLanguage()); 
 								
 							try{
 								
@@ -569,64 +571,98 @@ public class OutgoingWorker {
 	}
 	
 	/**
-	 * Gets the footer from the database and reads it into a string
-	 * @return
+	 * Read footers from settings db
 	 */
-	private String getEmailFooter() {
+	private void readFootersFromDB(){
+			
+		String SQL = "SELECT `value`, `name` FROM `settings` WHERE `name` LIKE " + //$NON-NLS-1$
+				"'emailFooter%'"; //$NON-NLS-1$
 		
-		String footer = null;
+		Statement selectFooter = null;
+		ResultSet results = null;
 		
-		if(emailFooter == null){
+		try{
 			
-			String SQL = "SELECT `value` FROM `settings` WHERE `name` = " + //$NON-NLS-1$
-					"'emailFooter'"; //$NON-NLS-1$
+			selectFooter = database.getConnection().createStatement();
 			
-			Statement selectFooter = null;
-			ResultSet results = null;
-			
-			try{
+			if(selectFooter.execute(SQL)){
 				
-				selectFooter = database.getConnection().createStatement();
+				results = selectFooter.getResultSet();
+				footers = new HashMap<String, String>();
 				
-				if(selectFooter.execute(SQL)){
+				while(results.next()){
 					
-					results = selectFooter.getResultSet();
+					String name = results.getString("name"); //$NON-NLS-1$
 					
-					while(results.next())
-						emailFooter = results.getString("value"); //$NON-NLS-1$
+					if(!name.contains("_")) //$NON-NLS-1$
+						name = ""; //$NON-NLS-1$
+					else
+						name = name.split("_")[1]; //$NON-NLS-1$
 						
-				}
-				
-				if(!emailFooter.startsWith("exec ")){ //$NON-NLS-1$
-					
-					//Not a command to execute so read from template file
-					//email footer
-					emailFooter = readTemplateFile(templateBasePath + 
-							System.getProperty("file.separator") + //$NON-NLS-1$
-							emailFooter);
+					footers.put(name, results.getString("value")); //$NON-NLS-1$
 					
 				}
-					
-				
-			}catch(SQLException e){
-				
-				LOGGER.severe("Error looking up email footer"); //$NON-NLS-1$
-				e.printStackTrace();
-				
-			}finally{
-				
-				close(selectFooter, results);
 				
 			}
 			
+			Iterator<String> languages = footers.keySet().iterator();
+			
+			while(languages.hasNext()){
+				
+				String key = languages.next();
+				
+				if(!footers.get(key).startsWith("exec ")){ //$NON-NLS-1$
+					
+					//Not a command to execute so read from template file
+					//email footer
+					String file = footers.get(key);
+					
+					if(key.length() > 0)
+						file += "_" + key; //$NON-NLS-1$
+					
+					String temp = readTemplateFile(templateBasePath +
+							System.getProperty("file.separator") +  //$NON-NLS-1$
+							file);
+					
+					footers.put(key, temp);
+					
+				}
+				
+			}
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Error looking up email footer"); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(selectFooter, results);
 			
 		}
+			
+		//End of DB Read
 		
-		if(emailFooter.startsWith("exec ")){ //$NON-NLS-1$
+	}
+	
+	/**
+	 * Gets the footer from the database and reads it into a string
+	 * @return
+	 */
+	private String getEmailFooter(String language) {
+		
+		String footer = null;
+		language = language.toLowerCase();
+		
+		if(footers == null)//null so read from DB
+			readFootersFromDB();
+		
+		if(footers.get(language).startsWith("exec ")){ //$NON-NLS-1$
 			
 			try{
 				
-				Process p = Runtime.getRuntime().exec(emailFooter.substring(5));
+				Process p = Runtime.getRuntime().exec(
+						footers.get(language).substring(5));
 				p.waitFor();
 				
 				BufferedReader reader = new BufferedReader(
@@ -645,8 +681,10 @@ public class OutgoingWorker {
 				
 			}
 			
-		}else
-			footer = emailFooter;
+		}else if(footers.containsKey(language))
+			footer = footers.get(language);
+		else
+			footer = footers.get("");//Default //$NON-NLS-1$
 		
 		return footer;
 		
@@ -728,7 +766,7 @@ public class OutgoingWorker {
 			
 			SimpleDateFormat sdf = new SimpleDateFormat("EEEE"); //$NON-NLS-1$
 			body = body.replaceAll("\\{\\{DAY\\}\\}", //$NON-NLS-1$
-					sdf.format(new Date())); 
+					sdf.format(new Date()));
 			
 		}
 		
