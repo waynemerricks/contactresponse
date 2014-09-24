@@ -17,6 +17,7 @@ import org.apache.commons.validator.routines.EmailValidator;
 
 import com.thevoiceasia.database.DatabaseHelper;
 import com.thevoiceasia.database.FieldMap;
+import com.thevoiceasia.database.KeyValue;
 import com.thevoiceasia.user.FreeUsers;
 
 public class Contact {
@@ -31,7 +32,8 @@ public class Contact {
 	private FreeUsers users = null;
 	private int currentFreeUser = -1;
 	private boolean error = false, idInitialise = false;
-	
+	private ArrayList<KeyValue> alternatePhones = null;//<id in values table, phone number>
+	private ArrayList<KeyValue> alternateEmails = null;//<id in values table, email>
 	private DatabaseHelper database = null;
 
 	private static final Logger LOGGER = Logger.getLogger("com.thevoiceasia.contact.Contact"); //$NON-NLS-1$
@@ -253,19 +255,36 @@ public class Contact {
 	 */
 	private void populateByPhone(){
 	
-		if(!populate("WHERE `phone` LIKE ?", "%" + phoneNumber) && //$NON-NLS-1$ //$NON-NLS-2$
-				!checkCustomPhone("%phoneNumber")) //$NON-NLS-1$
-			createNewContact();
-		
+		if(!populate("WHERE `phone` LIKE ?", "%" + phoneNumber)){//$NON-NLS-1$ //$NON-NLS-2$
+			
+			int contact = checkCustomPhone("%" + phoneNumber); //$NON-NLS-1$
+			
+			if(contact == -1)
+				createNewContact();
+			else{
+				
+				//TODO populate by id
+				
+			}
+			 
+		}
+			
+			
 	}
 	
-	private boolean checkCustomPhone(String phone){
+	/**
+	 * Checks custom fields for the given phone number
+	 * @param phone
+	 * @return owner id or -1 if not found
+	 */
+	private int checkCustomPhone(String phone){
 		
-		boolean found = false;
+		int owner = -1;
 		
-		/*PreparedStatement select = null;
+		PreparedStatement select = null;
 		ResultSet results = null;
 		
+		//ID = 4 is the alternate phone custom field
 		String SQL = "SELECT `owner_id` FROM `contact_values_small` " + //$NON-NLS-1$
 				"WHERE `id` = 4 AND `value` LIKE ?"; //$NON-NLS-1$
 		
@@ -277,7 +296,22 @@ public class Contact {
 			if(select.execute()){
 				
 				results = select.getResultSet();
-				//TODO Multiple contacts with same phone number? Pick oldest?
+				
+				//Multiple contacts with same phone number? Pick oldest?
+				while(results.next()){
+					
+					if(owner == -1)
+						owner = results.getInt("owner_id"); //$NON-NLS-1$
+					else{
+						
+						int id = results.getInt("owner_id");//memory vs speed //$NON-NLS-1$
+						
+						if(owner > id)
+							owner = id;
+						
+					}
+					
+				}
 				
 			}
 			
@@ -290,10 +324,9 @@ public class Contact {
 			
 			close(select, results);
 			
-		}*/
+		}
 		
-		
-		return found;
+		return owner;
 		
 	}
 	
@@ -374,11 +407,21 @@ public class Contact {
 							"mappedTo")); //$NON-NLS-1$
 					
 					//Phone
-					if(checkNull(contact.getString("phone")) == null &&  //$NON-NLS-1$
-							phoneNumber != null)
-						updatePhone();
-					else if(checkNull(contact.getString("phone")) != null) //$NON-NLS-1$
-						phoneNumber = contact.getString("phone"); //$NON-NLS-1$
+					if(!idInitialise){
+						
+						if(checkNull(contact.getString("phone")) == null &&  //$NON-NLS-1$
+								phoneNumber != null)
+							updatePhone();
+						else if(checkNull(contact.getString("phone")) != null) //$NON-NLS-1$
+							phoneNumber = contact.getString("phone"); //$NON-NLS-1$
+						
+					}else{
+						
+						//Just read the details from the DB
+						if(checkNull(contact.getString("phone")) != null) //$NON-NLS-1$
+							phoneNumber = contact.getString("phone"); //$NON-NLS-1$
+						
+					}
 					
 					//Email
 					if(!idInitialise){
@@ -1083,7 +1126,9 @@ public class Contact {
 		for (int i = 0; i < TABLES.length; i++){
 			
 			String SQL = "SELECT `contact_fields`.`label`, `" + TABLES[i] +  //$NON-NLS-1$
-				"`.`value` FROM `contact_fields` INNER JOIN `" + TABLES[i] + //$NON-NLS-1$
+				"`.`value`, `contact_fields`.`dbMap`, " + //$NON-NLS-1$
+				"`" + TABLES[i] + "`.`id` AS `valueId` FROM `contact_fields` " + //$NON-NLS-1$ //$NON-NLS-2$
+				"INNER JOIN `" + TABLES[i] + //$NON-NLS-1$
 				"` ON `" + TABLES[i] + "`.`field_id` = `contact_fields`.`id` " + //$NON-NLS-1$ //$NON-NLS-2$
 				"WHERE `" + TABLES[i] + "`.`owner_id` = ?"; //$NON-NLS-1$ //$NON-NLS-2$
 			
@@ -1100,10 +1145,34 @@ public class Contact {
 				selectContact.execute();
 				customResults = selectContact.getResultSet();
 				
-				while(customResults.next())
-					custom.put(customResults.getString("label"),  //$NON-NLS-1$
-							customResults.getString("value")); //$NON-NLS-1$
+				while(customResults.next()){
 					
+					//Alternate Phones and Emails Stored separately
+					if(customResults.getString("dbMap").equals("altPhone")){ //$NON-NLS-1$ //$NON-NLS-2$
+						
+						if(alternatePhones == null)
+							alternatePhones = new ArrayList<KeyValue>();
+						
+						alternatePhones.add(new KeyValue(
+								customResults.getString("valueId"), //$NON-NLS-1$
+								customResults.getString("value"))); //$NON-NLS-1$
+						
+					}else if(customResults.getString("dbMap") //$NON-NLS-1$
+							.equals("altEmail")){ //$NON-NLS-1$ 
+						
+						if(alternateEmails == null)
+							alternateEmails = new ArrayList<KeyValue>();
+						
+						alternateEmails.add(new KeyValue(
+								customResults.getString("valueId"), //$NON-NLS-1$
+								customResults.getString("value"))); //$NON-NLS-1$
+						
+					}else
+						custom.put(customResults.getString("label"),  //$NON-NLS-1$
+								customResults.getString("value")); //$NON-NLS-1$
+					
+				}
+				
 			}catch(SQLException e){
 				
 				e.printStackTrace();
