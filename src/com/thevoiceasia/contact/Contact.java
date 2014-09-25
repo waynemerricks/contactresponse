@@ -257,7 +257,7 @@ public class Contact {
 	
 		if(!populate("WHERE `phone` LIKE ?", "%" + phoneNumber)){//$NON-NLS-1$ //$NON-NLS-2$
 			
-			int contact = checkCustomPhone("%" + phoneNumber); //$NON-NLS-1$
+			int contact = checkAlternatePhone("%" + phoneNumber); //$NON-NLS-1$
 			
 			if(contact == -1)
 				createNewContact();
@@ -278,9 +278,9 @@ public class Contact {
 	 * @param emailSearch What to search for
 	 * @return owner id or -1 if not found
 	 */
-	private int checkCustomEmail(String emailSearch) {
+	private int checkAlternateEmail(String emailSearch) {
 		
-		return checkCustomField(emailSearch, 3, "contact_values_medium"); //$NON-NLS-1$
+		return checkAlternateField(emailSearch,"contact_emails"); //$NON-NLS-1$
 		
 	}
 
@@ -289,9 +289,9 @@ public class Contact {
 	 * @param phone
 	 * @return owner id or -1 if not found
 	 */
-	private int checkCustomPhone(String phone){
+	private int checkAlternatePhone(String phone){
 		
-		return checkCustomField(phone, 4, "contact_values_small"); //$NON-NLS-1$
+		return checkAlternateField(phone, "contact_phones"); //$NON-NLS-1$
 		
 	}
 	
@@ -302,7 +302,7 @@ public class Contact {
 	 * @param tableName table to search
 	 * @return owner id or -1 if not found
 	 */
-	private int checkCustomField(String term, int fieldType, String tableName){
+	private int checkAlternateField(String term, String tableName){
 		
 		int owner = -1;
 		
@@ -310,8 +310,8 @@ public class Contact {
 		ResultSet results = null;
 		
 		//ID = 4 is the alternate phone custom field
-		String SQL = "SELECT `owner_id` FROM `" + tableName + "` " + //$NON-NLS-1$ //$NON-NLS-2$
-				"WHERE `id` = " + fieldType + " AND `value` LIKE ?"; //$NON-NLS-1$ //$NON-NLS-2$
+		String SQL = "SELECT `owner` FROM `" + tableName + "` " + //$NON-NLS-1$ //$NON-NLS-2$
+				"WHERE `value` LIKE ?"; //$NON-NLS-1$
 		
 		try{
 			
@@ -326,10 +326,10 @@ public class Contact {
 				while(results.next()){
 					
 					if(owner == -1)
-						owner = results.getInt("owner_id"); //$NON-NLS-1$
+						owner = results.getInt("owner"); //$NON-NLS-1$
 					else{
 						
-						int id = results.getInt("owner_id");//memory vs speed //$NON-NLS-1$
+						int id = results.getInt("owner");//memory vs speed //$NON-NLS-1$
 						
 						if(owner > id)
 							owner = id;
@@ -342,8 +342,8 @@ public class Contact {
 			
 		}catch(SQLException e){
 			
-			LOGGER.severe("Error looking up custom field " + fieldType +  //$NON-NLS-1$
-					" in table " + tableName); //$NON-NLS-1$
+			LOGGER.severe("Error looking up alternate field in table " + //$NON-NLS-1$
+					tableName); 
 			e.printStackTrace();
 			
 		}finally{
@@ -367,7 +367,7 @@ public class Contact {
 		
 		if(!populate("WHERE `email` = ?", email)){//$NON-NLS-1$
 			
-			int contact = checkCustomEmail(email);
+			int contact = checkAlternateEmail(email);
 			
 			if(contact == -1)
 				createNewContact();
@@ -515,8 +515,13 @@ public class Contact {
 					//Auto Reply
 					autoReply = contact.getString("auto_reply"); //$NON-NLS-1$
 					
-					//Flag existing success
+					//Get Custom Fields
 					populateCustomFields();
+					
+					//Get any alternate Phone/Email addresses
+					getAlternateContactDetails(id);
+					
+					//Flag existing success
 					existing = true;
 					
 				}
@@ -1065,20 +1070,154 @@ public class Contact {
 		
 	}
 	
+	
+	private void getAlternateContactDetails(int contact){
+		
+		Statement select = null;
+		ResultSet results = null;
+		
+		try{
+			
+			String SQL = "SELECT `id`, `value` FROM `contact_emails` WHERE " + //$NON-NLS-1$
+					"`owner` = " + contact; //$NON-NLS-1$
+			select = database.getConnection().createStatement();
+			
+			if(select.execute(SQL)){
+				
+				results = select.getResultSet();
+				
+				while(results.next()){
+					
+					if(alternateEmails == null)
+						alternateEmails = new ArrayList<KeyValue>();
+					
+					alternateEmails.add(new KeyValue(results.getString("id"), //$NON-NLS-1$
+							results.getString("value"))); //$NON-NLS-1$
+					
+				}
+				
+			}
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Error getting alternate Emails for contact: " + contact); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(select, results);
+			
+		}
+		
+		try{
+			
+			String SQL = "SELECT `id`, `value` FROM `contact_phones` WHERE " + //$NON-NLS-1$
+					"`owner` = " + contact; //$NON-NLS-1$
+			select = database.getConnection().createStatement();
+			
+			if(select.execute(SQL)){
+				
+				results = select.getResultSet();
+				
+				while(results.next()){
+					
+					if(alternatePhones == null)
+						alternatePhones = new ArrayList<KeyValue>();
+					
+					alternatePhones.add(new KeyValue(results.getString("id"), //$NON-NLS-1$
+							results.getString("value"))); //$NON-NLS-1$
+					
+				}
+				
+			}
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Error getting alternate Phones for contact: " + contact); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(select, results);
+			
+		}
+		
+	}
+	
+	/**
+	 * Updates alternate emails in the contact_emails table
+	 */
 	private void updateAlternateEmails() {
-		// TODO Auto-generated method stub
-		/* Can't store in custom small etc because of unique owner and field
-		 * combo
-		 * Create new contact_emails && contact_phones
-		 * - id, owner, email/phone
-		 * 
-		 * Will complicate updates/deletes but what can you do?
-		 */
+		
+		updateAlternateContacts(alternateEmails, "contact_emails"); //$NON-NLS-1$
+		
+	}
+	
+	/**
+	 * Updates alternate phones in the contact_phones table
+	 */
+	private void updateAlternatePhones(){
+		
+		updateAlternateContacts(alternatePhones, "contact_phones"); //$NON-NLS-1$
 		
 	}
 
-	private void updateAlternatePhones() {
-		// TODO Auto-generated method stub
+	/**
+	 * Called by updateAlternatePhones/Emails
+	 * @param array Array to process
+	 * @param table Table to update/insert to
+	 */
+	private void updateAlternateContacts(ArrayList<KeyValue> array, 
+			String table) {
+		
+		PreparedStatement insert = null;
+		PreparedStatement update = null;
+		
+		try{
+			
+			//Create preparedStatements for reuse
+			String SQL = "INSERT INTO `" + table + "` (`owner`, `value`) " + //$NON-NLS-1$ //$NON-NLS-2$
+					"VALUES (?, ?)"; //$NON-NLS-1$
+			insert = database.getConnection().prepareStatement(SQL);
+			
+			SQL = "UPDATE `" + table + "` SET `owner` = ?, `value` = ? " + //$NON-NLS-1$ //$NON-NLS-2$
+					"WHERE `id` = ?"; //$NON-NLS-1$
+			update = database.getConnection().prepareStatement(SQL);
+			
+			for(int i = 0; i < array.size(); i++){
+				
+				if(Integer.parseInt(array.get(i).key) == -1){
+					
+					//INSERT
+					insert.setInt(1, id);
+					insert.setString(2, array.get(i).value);
+					insert.execute();
+					
+				}else{
+					
+					//UPDATE
+					update.setInt(1, id);
+					update.setString(2, array.get(i).value);
+					update.setInt(3, 
+							Integer.parseInt(array.get(i).key));
+					update.execute();
+					
+				}
+				
+			}
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Error updating alternate contacts for " + id +  //$NON-NLS-1$
+					" " + table); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(insert, null);
+			close(update, null);
+			
+		}
 		
 	}
 
@@ -1233,28 +1372,7 @@ public class Contact {
 				
 				while(customResults.next()){
 					
-					//Alternate Phones and Emails Stored separately
-					if(customResults.getString("dbMap").equals("altPhone")){ //$NON-NLS-1$ //$NON-NLS-2$
-						
-						if(alternatePhones == null)
-							alternatePhones = new ArrayList<KeyValue>();
-						
-						alternatePhones.add(new KeyValue(
-								customResults.getString("valueId"), //$NON-NLS-1$
-								customResults.getString("value"))); //$NON-NLS-1$
-						
-					}else if(customResults.getString("dbMap") //$NON-NLS-1$
-							.equals("altEmail")){ //$NON-NLS-1$ 
-						
-						if(alternateEmails == null)
-							alternateEmails = new ArrayList<KeyValue>();
-						
-						alternateEmails.add(new KeyValue(
-								customResults.getString("valueId"), //$NON-NLS-1$
-								customResults.getString("value"))); //$NON-NLS-1$
-						
-					}else
-						custom.put(customResults.getString("label"),  //$NON-NLS-1$
+					custom.put(customResults.getString("label"),  //$NON-NLS-1$
 								customResults.getString("value")); //$NON-NLS-1$
 					
 				}
