@@ -820,19 +820,39 @@ public class Contact {
 				name = field[1].trim();
 				addedInfo = true;
 				
-			}else if(field[0].toLowerCase().startsWith("email") && //$NON-NLS-1$
-					email == null){ 
+			}else if(field[0].toLowerCase().startsWith("email")){  //$NON-NLS-1$
 				
-				email = field[1].trim();//Don't really need this but whatever
+				if(email == null)
+					email = field[1].trim();//Don't really need this but whatever
+				else{
+					
+					if(alternateEmails == null)
+						alternateEmails = new ArrayList<KeyValue>();
+					
+					alternateEmails.add(new KeyValue("-1", field[1].trim())); //$NON-NLS-1$
+					
+				}
+				
 				addedInfo = true;
 				
 			}else if(field[0].toLowerCase().startsWith("phone") && //$NON-NLS-1$
 					phoneNumber == null){ 
 				
-				phoneNumber = field[1].trim();
+				String phoneTemp = field[1].trim();
 				
-				while(phoneNumber.startsWith("+")) //$NON-NLS-1$
-					phoneNumber = phoneNumber.substring(1);
+				while(phoneTemp.startsWith("+")) //$NON-NLS-1$
+					phoneTemp = phoneTemp.substring(1);
+				
+				if(phoneNumber == null)
+					phoneNumber = phoneTemp;
+				else{
+					
+					if(alternatePhones == null)
+						alternatePhones = new ArrayList<KeyValue>();
+					
+					alternatePhones.add(new KeyValue("-1", phoneTemp)); //$NON-NLS-1$
+					
+				}
 				
 				addedInfo = true;
 				
@@ -988,6 +1008,12 @@ public class Contact {
 			if(custom.size() > 0)//Update Custom fields if we have some
 				updateCustomFields();
 			
+			if(alternatePhones != null)
+				updateAlternatePhones();
+			
+			if(alternateEmails != null)
+				updateAlternateEmails();
+			
 		}catch(SQLException e){
 			
 			e.printStackTrace();
@@ -1038,6 +1064,17 @@ public class Contact {
 		return mappings;
 		
 	}
+	
+	private void updateAlternateEmails() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	private void updateAlternatePhones() {
+		// TODO Auto-generated method stub
+		
+	}
+
 	/**
 	 * Updates the custom fields stored in the hash map
 	 * call Update as it will only do this if necessary.
