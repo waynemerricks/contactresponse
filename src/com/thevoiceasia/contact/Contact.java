@@ -1067,6 +1067,13 @@ public class Contact {
 	
 	private void updateAlternateEmails() {
 		// TODO Auto-generated method stub
+		/* Can't store in custom small etc because of unique owner and field
+		 * combo
+		 * Create new contact_emails && contact_phones
+		 * - id, owner, email/phone
+		 * 
+		 * Will complicate updates/deletes but what can you do?
+		 */
 		
 	}
 
