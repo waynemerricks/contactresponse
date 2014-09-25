@@ -770,7 +770,8 @@ public class Contact {
 			freeUser = "" + nextFreeUser; //$NON-NLS-1$
 			currentFreeUser = nextFreeUser;
 			
-		}
+		}else//Fix for blank freeUser
+			freeUser = "-1"; //$NON-NLS-1$
 		
 		String SQL = "INSERT INTO `contacts` (`email`, `assigned_user_id`) " + //$NON-NLS-1$
 				"VALUES (?, ?)"; //$NON-NLS-1$
