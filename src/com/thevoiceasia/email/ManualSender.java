@@ -186,7 +186,7 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 					subject, body);
 			
 			//Send the message
-			if(type.equals("E")){//Email //$NON-NLS-1$
+			if(type.equals("E") && insertedId != -2){//Email //$NON-NLS-1$
 				
 				if(email == null)
 					email = new EmailSender(senderHost, senderUser, senderPass);
@@ -223,7 +223,7 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 					
 				}
 				
-			}else if(type.equals("S")){//SMS //$NON-NLS-1$
+			}else if(type.equals("S") && insertedId != -2){//SMS //$NON-NLS-1$
 				
 				if(sms == null)
 					sms = new SMSSender(database);
@@ -285,6 +285,7 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 	 * @param subject Subject of the message (ignored for SMS)
 	 * @param body Body of the message
 	 * @return record id returned when inserted into the messages table
+	 *   or -1 if not inserted or -2 if blank message
 	 */
 	private int addOutgoingMessageToDB(String type, String messageId,
 			String userId, String subject, String body) {
@@ -293,39 +294,62 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		PreparedStatement insertMessage = null;
 		ResultSet results = null;
 		
-		try{
+		String preview = body.replaceAll("\n", "  ").replaceAll("\r", ""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+		preview = preview.trim();
+		
+		if(preview.length() < 1){
 			
-			String SQL = "INSERT INTO `messages` (`owner`, `assigned_user`, " + //$NON-NLS-1$
-					"`type`, `direction`, `created_by`, `status`, `preview`) " + //$NON-NLS-1$
-					"VALUES (?, ?, ?, ?, ?, ?, ?)"; //$NON-NLS-1$
+			if(subject.trim().length() > 1)
+				preview = subject;
+			else
+				insertedId = -2;//flag as error
+		}
+		
+		if(insertedId != -1){
 			
-			//TODO finish this, need to prepare the statement and archive to file
-			//V unsent manual message
-			insertMessage = database.getConnection().prepareStatement(SQL);
+			if(preview.length() > 50)
+				preview = preview.substring(0, 47) + "..."; //$NON-NLS-1$
 			
-			insertMessage.execute(SQL, Statement.RETURN_GENERATED_KEYS);
+			try{
 				
-			//Execute it
-			int rows = insertMessage.executeUpdate();
-			
-			if(rows > 0){
-			
-				results = insertMessage.getGeneratedKeys();
+				String SQL = "INSERT INTO `messages` (`owner`, `assigned_user`, " + //$NON-NLS-1$
+						"`type`, `direction`, `created_by`, `status`, `preview`) " + //$NON-NLS-1$
+						"VALUES (?, ?, ?, ?, ?, ?, ?)"; //$NON-NLS-1$
 				
-				while(results.next())
-					insertedId = results.getInt(1);
+				insertMessage = database.getConnection().prepareStatement(SQL);
 				
-			}else
-				LOGGER.warning("Could not insert message"); //$NON-NLS-1$
-			
-		}catch(SQLException e){
-			
-			LOGGER.severe("Error inserting outgoing message"); //$NON-NLS-1$
-			e.printStackTrace();
-			
-		}finally{
-			
-			close(insertMessage, results);
+				insertMessage.setInt(1, getContactId(Integer.parseInt(messageId)));//owner
+				insertMessage.setInt(2, Integer.parseInt(userId));//Assign to user who sent this
+				insertMessage.setString(3, type); //Type
+				insertMessage.setString(4, "O"); //Direction //$NON-NLS-1$
+				insertMessage.setInt(5, Integer.parseInt(userId)); //Created By
+				insertMessage.setString(6, "V"); //status V ==> Unsent Manual  //$NON-NLS-1$
+				insertMessage.setString(7, preview); //preview
+				insertMessage.execute(SQL, Statement.RETURN_GENERATED_KEYS);
+					
+				//Execute it
+				int rows = insertMessage.executeUpdate();
+				
+				if(rows > 0){
+				
+					results = insertMessage.getGeneratedKeys();
+					
+					while(results.next())
+						insertedId = results.getInt(1);
+					
+				}else
+					LOGGER.warning("Could not insert message"); //$NON-NLS-1$
+				
+			}catch(SQLException e){
+				
+				LOGGER.severe("Error inserting outgoing message"); //$NON-NLS-1$
+				e.printStackTrace();
+				
+			}finally{
+				
+				close(insertMessage, results);
+				
+			}
 			
 		}
 		
