@@ -6,29 +6,34 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.logging.FileHandler;
 
 import javax.mail.MessagingException;
 
+import com.thevoiceasia.messages.Footers;
 import com.thevoiceasia.messages.MessageArchiver;
 import com.thevoiceasia.sms.SMSSender;
 
 public class ManualSender extends MessageArchiver implements EmailReader{
 
 	private String mailHost = null, mailUser = null, mailPass = null,
-				senderHost =  null, senderUser = null, senderPass = null;
+				senderHost =  null, senderUser = null, senderPass = null,
+				templateBasePath = null;
 	private HashMap<String, String> settings = null;
 	private HashMap<String, String> users = null;
 	private EmailSender email = null;
 	private SMSSender sms = null;
 	private boolean DEBUG = false;
+	private Footers footers = null;
+	private long expiredTimeOut = 0L;
 	
 	public ManualSender(String host, String user, String pass, String dbase,
 			String mailHost, String mailUser, String mailPass, 
 			String archivePath, String senderHost, String senderUser, 
-			String senderPassword, boolean debug){
+			String senderPassword, String templatePath, boolean debug){
 		
 		super(host, user, pass, dbase, archivePath);
 		
@@ -38,6 +43,8 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		this.senderHost = senderHost;
 		this.senderUser = senderUser;
 		this.senderPass = senderPassword;
+		this.templateBasePath = templatePath;
+		
 		this.DEBUG = debug;
 		
 		setupLogging();
@@ -45,7 +52,12 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		readSettings();
 		readUsers();
 		
+		//Calculate timeout in millis
+		int minutes = Integer.parseInt(settings.get("manualTimeOut")); //$NON-NLS-1$
+		expiredTimeOut = minutes * 60000;
+		
 		//TODO time out 30minutes T status to D
+		//TODO check debug going to the right place not real people
 		
 	}
 
@@ -549,10 +561,86 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		
 	}
 
+	/**
+	 * Gets the footer for the given contact via its messageId
+	 * @param messageId Message from a contact to lookup
+	 * @return Footer to be appended to outgoing message
+	 */
 	private String getFooter(String messageId) {
-		// TODO Auto-generated method stub
-		String SQL = "SELECT `language` FROM `languages` WHERE mapped"
-		return null;
+		
+		String footer = ""; //$NON-NLS-1$
+		
+		if(footers == null)
+			footers = new Footers(database, templateBasePath);
+		
+		int contactId = getContactId(Integer.parseInt(messageId));
+		
+		//Get the language for the given contact
+		String SQL = "SELECT `languages.mappedTo` FROM `contacts` " + //$NON-NLS-1$
+				"INNER JOIN `languages` " + //$NON-NLS-1$
+				"ON `contacts`.`language_id` = `languages`.`id` " + //$NON-NLS-1$
+				"WHERE `contacts`.`id` = " + contactId; //$NON-NLS-1$
+		
+		Statement language = null;
+		ResultSet results = null;
+		int mappedId = -1;
+		
+		try{
+			
+			language = database.getConnection().createStatement();
+			
+			if(language.execute(SQL)){
+				
+				results = language.getResultSet();
+				
+				while(results.next())
+					mappedId = results.getInt("mappedTo"); //$NON-NLS-1$
+					
+			}
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Error looking up language mapped to for contact " +  //$NON-NLS-1$
+					contactId);
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(language, results);
+			
+		}
+		
+		if(mappedId != -1){
+			
+			//Get the language that the contacts language is mapped to
+			SQL = "SELECT `language` FROM `languages` WHERE `id` = " + mappedId; //$NON-NLS-1$
+			
+			try{
+				
+				language = database.getConnection().createStatement();
+				
+				if(language.execute(SQL)){
+					
+					results = language.getResultSet();
+					
+					while(results.next())//get the footer for this language
+						footer = footers.getEmailFooter(
+								results.getString("language").toLowerCase()); //$NON-NLS-1$
+						
+				}
+				
+			}catch(SQLException e){
+				
+				LOGGER.severe("Error looking up language name for mappedID " +  //$NON-NLS-1$
+						mappedId);
+				e.printStackTrace();
+				
+			}
+			
+		}
+		
+		return footer;
+		
 	}
 
 	/**
@@ -582,9 +670,25 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		EmailReceiver receiver = new EmailReceiver(mailHost, mailUser, mailPass, this);
 		receiver.start();
 		receiver.join();
+		checkForTimedOutMessages();
 		
 	}
 	
+	/**
+	 * 
+	 */
+	private void checkForTimedOutMessages() {
+		// TODO Auto-generated method stub
+		Date expired = new Date(new Date().getTime() - expiredTimeOut);
+		
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss"); //$NON-NLS-1$
+		
+		String expiredTimeStamp = sdf.format(expired);
+		String SQL = "UPDATE `messages` SET `status` = 'D' WHERE `updated` < " + expiredTimeStamp;
+		
+		
+	}
+
 	/**
 	 * Set the Logger object
 	 */
@@ -609,20 +713,20 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 	 * @param args 8 arguments expected:
 	 *   DB_HOST DB_USER DB_PASS DBASE MAIL_HOST MAIL_USER MAIL_PASS \ 
 	 *   EMAIL_STORE_PATH SEND_EMAIL_HOST SEND_EMAIL_USER SEND_EMAIL_PASS \
-	 *   [DEBUG]
+	 *   TEMPLATE_PATH [DEBUG]
 	 */
 	public static void main(String[] args){
 		
 		boolean debug = false;
 		
-		if(args.length == 12)
+		if(args.length == 13)
 			debug = true;
 		
-		if(args.length == 11 || args.length == 12){
+		if(args.length == 12 || args.length == 13){
 			
 			ManualSender manual = new ManualSender(args[0], args[1], args[2],
 					args[3], args[4], args[5], args[6], args[7], args[8], 
-					args[9], args[10], debug);
+					args[9], args[10], args[11], debug);
 			
 			if(!manual.isValidArchive()){
 				
@@ -664,7 +768,7 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		}else{
 			
 			System.out.println("USAGE: DBHOST DBUSER DBPASS DBASE MAILHOST " + //$NON-NLS-1$
-					"MAILUSER MAILPASS EMAILSTOREPATH [DEBUG]"); //$NON-NLS-1$
+					"MAILUSER MAILPASS EMAILSTOREPATH TEMPLATE_PATH [DEBUG]"); //$NON-NLS-1$
 			System.exit(1);
 			
 		}
