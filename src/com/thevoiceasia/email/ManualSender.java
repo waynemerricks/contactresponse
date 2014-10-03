@@ -322,7 +322,7 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 			
 		}finally{
 			
-			close(insertMessage, null);
+			close(insertMessage, results);
 			
 		}
 		
@@ -396,9 +396,46 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		
 	}
 
+	/**
+	 * Gets a contact id via a message id lookup
+	 * @param contactMessageId id to lookup
+	 * @return owner of that message (maps to contact id)
+	 */
 	private int getContactId(int contactMessageId) {
-		// TODO Auto-generated method stub
-		return 0;
+		
+		int contactId = -1;
+		String SQL = "SELECT `owner` FROM `messages` WHERE `id` = " +  //$NON-NLS-1$
+				contactMessageId;
+		
+		Statement selectMessage = null;
+		ResultSet results = null;
+		
+		try{
+			
+			selectMessage = database.getConnection().createStatement();
+			
+			if(selectMessage.execute(SQL)){
+				
+				results = selectMessage.getResultSet();
+				
+				while(results.next())
+					contactId = results.getInt("owner"); //$NON-NLS-1$
+				
+			}
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Error getting contact id from message " +  //$NON-NLS-1$
+					contactMessageId);
+			
+		}finally{
+			
+			close(selectMessage, results);
+			
+		}
+		
+		return contactId;
+		
 	}
 
 	private String getContactPhone(String messageId) {
