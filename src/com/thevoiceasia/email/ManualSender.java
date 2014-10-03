@@ -2,6 +2,7 @@ package com.thevoiceasia.email;
 
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -287,9 +288,45 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 			String userId, String subject, String body) {
 		
 		int insertedId = -1;
+		PreparedStatement insertMessage = null;
+		ResultSet results = null;
+		
+		try{
+			
+			String SQL = "INSERT INTO `messages` (`owner`, `assigned_user`, " + //$NON-NLS-1$
+					"`type`, `direction`, `created_by`, `status`, `preview`) " + //$NON-NLS-1$
+					"VALUES (?, ?, ?, ?, ?, ?, ?)"; //$NON-NLS-1$
+			
+			//V unsent manual message
+			insertMessage = database.getConnection().prepareStatement(SQL);
+			
+			insertMessage.execute(SQL, Statement.RETURN_GENERATED_KEYS);
+				
+			//Execute it
+			int rows = insertMessage.executeUpdate();
+			
+			if(rows > 0){
+			
+				results = insertMessage.getGeneratedKeys();
+				
+				while(results.next())
+					insertedId = results.getInt(1);
+				
+			}else
+				LOGGER.warning("Could not insert message"); //$NON-NLS-1$
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Error inserting outgoing message"); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(insertMessage, null);
+			
+		}
 		
 		return insertedId;
-		// TODO Auto-generated method stub
 		
 	}
 
@@ -379,9 +416,22 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		return null;
 	}
 
+	/**
+	 * Removes any thunderbird signatures from the given string.
+	 * 
+	 * Very simple: TB prefixes signatures with "-- \n" so if it contains
+	 * this, substring previous to this string
+	 * @param body String to check
+	 * @return String minus TB signature
+	 */
 	private String stripThunderbirdSig(String body) {
-		// TODO Auto-generated method stub
-		return null;
+		
+		//Strip everything after this string including the string itself
+		if(body.contains("-- \n")) //$NON-NLS-1$
+			body = body.substring(0, body.indexOf("-- \n")); //$NON-NLS-1$
+			
+		return body;
+		
 	}
 
 	/**
