@@ -45,6 +45,8 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		readSettings();
 		readUsers();
 		
+		//TODO time out 30minutes T status to D
+		
 	}
 
 	/**
@@ -297,6 +299,7 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 					"`type`, `direction`, `created_by`, `status`, `preview`) " + //$NON-NLS-1$
 					"VALUES (?, ?, ?, ?, ?, ?, ?)"; //$NON-NLS-1$
 			
+			//TODO finish this, need to prepare the statement and archive to file
 			//V unsent manual message
 			insertMessage = database.getConnection().prepareStatement(SQL);
 			
@@ -438,14 +441,73 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		
 	}
 
+	/**
+	 * Gets the contacts phone from the given message Id
+	 * @param messageId
+	 * @return
+	 */
 	private String getContactPhone(String messageId) {
-		// TODO Auto-generated method stub
-		return null;
+		
+		int contactId = getContactId(Integer.parseInt(messageId));
+		
+		return getContactValue("phone", contactId); //$NON-NLS-1$
+		
+	}
+	
+	/**
+	 * Gets the given value from the contacts table where the id matches
+	 * @param field field to get
+	 * @param id id of record to get field for
+	 * @return value of field
+	 */
+	private String getContactValue(String field, int id){
+		
+		String value = null;
+		
+		String SQL = "SELECT `" + field + "` FROM `contacts WHERE `id` = " + id;  //$NON-NLS-1$//$NON-NLS-2$
+		
+		Statement select = null;
+		ResultSet results = null;
+		
+		try{
+			
+			select = database.getConnection().createStatement();
+			
+			if(select.execute(SQL)){
+				
+				results = select.getResultSet();
+				
+				while(results.next())
+					value = results.getString(field);
+				
+			}
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Error while reading contact field " + field); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(select, results);
+			
+		}
+		
+		return value;
+		
 	}
 
+	/**
+	 * Gets the contacts email associated with the given message
+	 * @param messageId
+	 * @return
+	 */
 	private String getContactEmail(String messageId) {
-		// TODO Auto-generated method stub
-		return null;
+		
+		int contactId = getContactId(Integer.parseInt(messageId));
+		
+		return getContactValue("email", contactId); //$NON-NLS-1$
+		
 	}
 
 	private String getFooter(String messageId) {
