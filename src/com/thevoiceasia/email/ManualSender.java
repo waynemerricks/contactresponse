@@ -372,7 +372,20 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		int contactId = getContactId(contactMessageId);
 		String currentSQL = null;
 		
-		String[] SQL = {
+		String[] SQL = null;
+		
+		if(outgoingMessageId == -1 || outgoingMessageId == -2){
+			
+			//Error so reset status back to D
+			SQL = new String[]{
+				"UPDATE `messages` SET `status` = 'D' WHERE `status` = 'T' " + //$NON-NLS-1$
+				"AND `owner` = " + contactId + " AND `id` <= " +  //$NON-NLS-1$ //$NON-NLS-2$
+				contactMessageId
+			};
+			
+		}else{
+			
+			SQL = new String[]{
 				"UPDATE `messages` SET `status` = '" + status +   //$NON-NLS-1$
 					"' WHERE `id` = " + outgoingMessageId,  //$NON-NLS-1$
 				"UPDATE `messages` SET `status` = 'R' WHERE `id` = " + //$NON-NLS-1$
@@ -380,7 +393,9 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 				"UPDATE `messages` SET `status` = 'A' WHERE `status` = 'T' " + //$NON-NLS-1$
 					"AND `owner` = " + contactId + " AND `id` < " +  //$NON-NLS-1$ //$NON-NLS-2$
 					contactMessageId
-		};
+			};
+			
+		}
 		
 		Statement updateMessages = null;
 		
@@ -536,6 +551,7 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 
 	private String getFooter(String messageId) {
 		// TODO Auto-generated method stub
+		String SQL = "SELECT `language` FROM `languages` WHERE mapped"
 		return null;
 	}
 
