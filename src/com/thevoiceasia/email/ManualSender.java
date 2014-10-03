@@ -88,7 +88,9 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		
 	}
 	
-	//Read user id ==> Name map
+	/**
+	 * Read user id ==> Name map
+	 */
 	private void readUsers(){
 		
 		String SQL = "SELECT `id`, `name` FROM `users`"; //$NON-NLS-1$
@@ -271,6 +273,16 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		
 	}
 	
+	/**
+	 * Adds the outgoing message to the DB and archive files
+	 * @param type Message Type E/S (Email/SMS)
+	 * @param messageId ID of the newest message from a contact covered by this 
+	 *   outgoing reply
+	 * @param userId ID of the user that created this outgoing reply
+	 * @param subject Subject of the message (ignored for SMS)
+	 * @param body Body of the message
+	 * @return record id returned when inserted into the messages table
+	 */
 	private int addOutgoingMessageToDB(String type, String messageId,
 			String userId, String subject, String body) {
 		
@@ -281,10 +293,75 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		
 	}
 
-	private void updateMessageStatus(int contactMessageId, 
+	/**
+	 * Updates contact messages and the outgoing reply with the required status
+	 * @param contactMessageId newest message ID from the contact that this 
+	 *   relates to
+	 * @param outgoingMessageId ID of the outgoing message to set the status
+	 * @param status Status to set outgoing message to
+	 */
+	private boolean updateMessageStatus(int contactMessageId, 
 			int outgoingMessageId, String status) {
-		// TODO Auto-generated method stub
 		
+		boolean updated = true;
+		
+		int contactId = getContactId(contactMessageId);
+		String currentSQL = null;
+		
+		String[] SQL = {
+				"UPDATE `messages` SET `status` = '" + status +   //$NON-NLS-1$
+					"' WHERE `id` = " + outgoingMessageId,  //$NON-NLS-1$
+				"UPDATE `messages` SET `status` = 'R' WHERE `id` = " + //$NON-NLS-1$
+					contactMessageId, 
+				"UPDATE `messages` SET `status` = 'A' WHERE `status` = 'T' " + //$NON-NLS-1$
+					"AND `owner` = " + contactId + " AND `id` < " +  //$NON-NLS-1$ //$NON-NLS-2$
+					contactMessageId
+		};
+		
+		Statement updateMessages = null;
+		
+		try{
+			
+			updateMessages = database.getConnection().createStatement();
+			
+			for(int i = 0; i < SQL.length; i++){
+				
+				if(updated == true){
+					
+					currentSQL = SQL[i];
+					updateMessages.execute(SQL[i]);
+					
+					if(updateMessages.getUpdateCount() < 1){
+						
+						LOGGER.warning("Could not update messages table: " +  //$NON-NLS-1$
+								currentSQL);
+						updated = false;
+						
+					}
+					
+				}
+				
+			}
+			
+		}catch(SQLException e){
+			
+			LOGGER.severe("Error updating message status: " + currentSQL); //$NON-NLS-1$
+			e.printStackTrace();
+			updated = false;
+			
+		}finally{
+			
+			close(updateMessages, null);
+			
+		}
+		
+		return updated;
+		
+	}
+
+	private int getContactId(int contactMessageId) {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 
 	private String getContactPhone(String messageId) {
