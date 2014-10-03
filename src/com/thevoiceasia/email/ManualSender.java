@@ -131,8 +131,9 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 	public boolean receiveEmail(Date receivedDate, String from, String to,
 			String name, String body, String subject) {
 		
-		//TODO Archive the message going out
 		String messageId = ""; //$NON-NLS-1$
+		String type = ""; //$NON-NLS-1$
+		int insertedId = -1;
 	    boolean success = false;
 		
 		if(to.contains("@" + settings.get("internalEmailDomain"))){//$NON-NLS-1$ //$NON-NLS-2$
@@ -150,7 +151,6 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 			//Get message id, message type and user id
 			to = to.split("@")[0]; //$NON-NLS-1$
 			
-		    String type = ""; //$NON-NLS-1$
 		    String userId = ""; //$NON-NLS-1$
 		    
 			for(int i = 0; i < to.length(); i++){
@@ -175,6 +175,10 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 			
 			//Strip any Thunderbird signatures from emails/SMS
 			body = stripThunderbirdSig(body);
+			
+			//Add to DB for outgoing and archive
+			insertedId = addOutgoingMessageToDB(type, messageId, userId, 
+					subject, body);
 			
 			//Send the message
 			if(type.equals("E")){//Email //$NON-NLS-1$
@@ -237,17 +241,29 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 
 		if(success){
 			
-			//TODO mark as sent
-			updateMessageStatus(messageId, ""); //$NON-NLS-1$
 			//M = Sent Manual Email
 			//N = Sent Manual SMS
 			//A = Archive older than where status = T
+			String status = "M"; //$NON-NLS-1$
+			
+			if(type.equals("S")) //$NON-NLS-1$
+				status = "N"; //$NON-NLS-1$
+			
+			updateMessageStatus(Integer.parseInt(messageId), insertedId, 
+					status);
 			
 		}else{
 			
-			//TODO mark as error
+			//Mark as error
 			//G = Failed Manual Email
 			//H = Failed Manual SMS
+			String status = "G"; //$NON-NLS-1$
+			
+			if(type.equals("S")) //$NON-NLS-1$
+				status = "H"; //$NON-NLS-1$
+			
+			updateMessageStatus(Integer.parseInt(messageId), insertedId, 
+					status);
 			
 		}
 		
@@ -255,7 +271,18 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		
 	}
 	
-	private void updateMessageStatus(String messageId, String string) {
+	private int addOutgoingMessageToDB(String type, String messageId,
+			String userId, String subject, String body) {
+		
+		int insertedId = -1;
+		
+		return insertedId;
+		// TODO Auto-generated method stub
+		
+	}
+
+	private void updateMessageStatus(int contactMessageId, 
+			int outgoingMessageId, String status) {
 		// TODO Auto-generated method stub
 		
 	}
