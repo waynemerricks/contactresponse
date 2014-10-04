@@ -30,6 +30,24 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 	private Footers footers = null;
 	private long expiredTimeOut = 0L;
 	
+	/**
+	 * Works on the incoming inbox for manual replies, also responsible for 
+	 * timing out replies and sending out the responses for manual replies
+	 * @param host Database Host for CRS
+	 * @param user User Name for CRS Database
+	 * @param pass Password for CRS Database
+	 * @param dbase Database Name for CRS Database
+	 * @param mailHost Host Name for incoming inbox
+	 * @param mailUser User Name for incoming inbox
+	 * @param mailPass Password for incoming inbox
+	 * @param archivePath Path to archive the messages on incoming inbox
+	 * @param senderHost Host Name for outgoing emails
+	 * @param senderUser User Name for outgoing emails
+	 * @param senderPassword Password for outgoing emails
+	 * @param templatePath Template path also used for email footers
+	 * @param debug if true, will only send sms/emails to the debug recipient
+	 *   as an email
+	 */
 	public ManualSender(String host, String user, String pass, String dbase,
 			String mailHost, String mailUser, String mailPass, 
 			String archivePath, String senderHost, String senderUser, 
