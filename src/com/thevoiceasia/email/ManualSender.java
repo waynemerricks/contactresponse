@@ -56,7 +56,6 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		int minutes = Integer.parseInt(settings.get("manualTimeOut")); //$NON-NLS-1$
 		expiredTimeOut = minutes * 60000;
 		
-		//TODO time out 30minutes T status to D
 		//TODO check debug going to the right place not real people
 		
 	}
@@ -144,6 +143,40 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		}
 	}
 
+	/**
+	 * Sends an email and handles exceptions
+	 * @param recipient
+	 * @param subject
+	 * @param body
+	 * @return
+	 */
+	private boolean sendEmail(String recipient, String subject, String body){
+		
+		boolean success = false;
+		
+		try{
+			
+			success = email.sendEmail(recipient, 
+					settings.get("emailFromAddress"), subject,  //$NON-NLS-1$
+					body);
+			
+		}catch(MessagingException e){
+			
+			LOGGER.severe("MessagingException: " + recipient); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}catch(UnknownHostException e){
+			
+			LOGGER.severe("UnknownHostException: " + recipient + " " +   //$NON-NLS-1$//$NON-NLS-2$
+					senderHost);
+			e.printStackTrace();
+			
+		}
+		
+		return success;
+		
+	}
+	
 	@Override
 	public boolean receiveEmail(Date receivedDate, String from, String to,
 			String name, String body, String subject) {
@@ -216,24 +249,7 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 				body += "\n--\n\t" + users.get(userId); //$NON-NLS-1$
 				body += getFooter(messageId);//Add the footers as necessary
 				
-				try{
-					
-					success = email.sendEmail(recipient, 
-							settings.get("emailFromAddress"), subject,  //$NON-NLS-1$
-							body);
-					
-				}catch(MessagingException e){
-					
-					LOGGER.severe("MessagingException: " + recipient); //$NON-NLS-1$
-					e.printStackTrace();
-					
-				}catch(UnknownHostException e){
-					
-					LOGGER.severe("UnknownHostException: " + recipient + " " +   //$NON-NLS-1$//$NON-NLS-2$
-							senderHost);
-					e.printStackTrace();
-					
-				}
+				sendEmail(recipient, subject, body);
 				
 			}else if(type.equals("S") && insertedId != -2){//SMS //$NON-NLS-1$
 				
@@ -247,9 +263,15 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 				//body += "-- " + users.get(userId).substring(0, 1); //$NON-NLS-1$
 				if(users.get(userId).contains(" ")) //$NON-NLS-1$
 					body += "-- " + users.get(userId).split(" ")[0];//Just first name //$NON-NLS-1$ //$NON-NLS-2$
-					
+				
 				String toNumber = getContactPhone(messageId);
-				success = sms.sendSMS(toNumber, body);
+				
+				//Debug = send email not sms
+				if(DEBUG)
+					sendEmail(settings.get("debugRecipient"),  //$NON-NLS-1$
+							"SMS TO: " + toNumber, body); //$NON-NLS-1$
+				else
+					success = sms.sendSMS(toNumber, body);
 				
 			}
 			
@@ -675,17 +697,37 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 	}
 	
 	/**
-	 * 
+	 * Resets any messages waiting for a manual response that have timed out
+	 * back to the default D Status so people will once again see them in 
+	 * their inboxes
 	 */
 	private void checkForTimedOutMessages() {
-		// TODO Auto-generated method stub
+		
 		Date expired = new Date(new Date().getTime() - expiredTimeOut);
 		
 		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss"); //$NON-NLS-1$
 		
 		String expiredTimeStamp = sdf.format(expired);
-		String SQL = "UPDATE `messages` SET `status` = 'D' WHERE `updated` < " + expiredTimeStamp;
+		String SQL = "UPDATE `messages` SET `status` = 'D' WHERE `updated` < " + //$NON-NLS-1$
+				expiredTimeStamp; 
 		
+		Statement resetManual = null;
+		
+		try{
+			
+			resetManual = database.getConnection().createStatement();
+			resetManual.executeUpdate(SQL);
+				
+		}catch(SQLException e){
+			
+			LOGGER.severe("Error while resetting manual response messages"); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(resetManual, null);
+			
+		}
 		
 	}
 
