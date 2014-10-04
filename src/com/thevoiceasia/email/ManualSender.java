@@ -56,8 +56,6 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		int minutes = Integer.parseInt(settings.get("manualTimeOut")); //$NON-NLS-1$
 		expiredTimeOut = minutes * 60000;
 		
-		//TODO check debug going to the right place not real people
-		
 	}
 
 	/**
