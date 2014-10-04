@@ -347,6 +347,9 @@
               <?php if(canEditRoles()){ ?>
                 <li><a href="#">Roles</a></li>
               <?php } ?>
+              <?php if(canEditTemplates()){ ?>
+                <li><a href="admin/templates.php">Templates</a></li>
+              <?php } ?>
             </ul>
           </li>
         <?php } ?>
