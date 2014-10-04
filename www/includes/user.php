@@ -22,6 +22,18 @@
 
   }
 
+  /** True if user can edit templates */
+  function canEditTemplates(){
+  	
+  	$edit = FALSE;
+
+  	if(hasPermission('CAN_EDIT_TEMPLATE'))
+  		$edit = TRUE;
+  	
+  	return $edit;
+  	
+  }
+  
   /** True if user can create other users */
   function canCreateUsers(){
 
