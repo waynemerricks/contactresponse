@@ -105,13 +105,13 @@
 	 * 20141231-3_email
 	 * 20141231-3_email_hindi
 	 */
-  	$templateFile = "$id_$type";
+  	$templateFile = $id . '_' . $type;
   	
   	if(strlen($language) > 0)
-  		$templateFile .= "_$language";
+  		$templateFile .= '_' . $language;
   	
   	if(strlen($date) > 0)
-  		$templateFile = "$date-$templateFile";
+  		$templateFile = $date . '-' . $templateFile;
   	
   	return is_file('../../templates/' . $templateFile);
   	
