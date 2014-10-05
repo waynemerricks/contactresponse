@@ -117,6 +117,15 @@
   	
   }
   
+  /**
+   * If exists class = green
+   * If not exists and > 7 days away white
+   * If not exists and <= 7 orange
+   * If not exists and < 2 red 
+   * @param boolean $exists
+   * @param string $date
+   * @return string
+   */
   function getStatusClass($exists, $date = null){
   	
   	$class = 'white';
@@ -127,8 +136,17 @@
   		$class = 'red';
   	else{
 
-  		$today = date('Ymd');
-  		//TODO compare dates
+  		$today = new DateTime(date('Y-m-d'));
+  		$statusDate = new DateTime(strtotime($date));
+  		$difference = $today->diff($statusDate);
+  		
+  		$interval = $datetime1->diff($datetime2);
+  		$days = $interval->format('%r%a');
+  		
+  		if($days <= 2)
+  			$class = 'red';
+  		else if($days <= 7)
+  			$class = 'orange';
   		
   	}
   	
