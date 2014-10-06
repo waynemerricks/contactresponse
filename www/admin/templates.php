@@ -20,21 +20,52 @@
   <head>
     <meta charset="utf8">
     <title>CRS | Admin - Templates</title>
-    <link rel="stylesheet" type="text/css" href="css/crs.css">
-    <link rel="stylesheet" type="text/css" href="css/menu.css">
+    <link rel="stylesheet" type="text/css" href="../css/crs.css">
+    <link rel="stylesheet" type="text/css" href="../css/menu.css">
+    <script type="text/javascript" src="includes/jquery-2.1.1.min.js"></script>
+    <script type="text/javascript">
+
+    //JQuery for datepicker
+    $(document).ready(function(){
+      $(".date").each(function(){
+        $(this).datepicker({
+          dateFormat: 'yy-mm-dd'
+        });
+      });
+    });
+  </script>
   </head>
   <body>
+    <div id="template_select">
+      <form action="edittemplate.php" method="post">
+        <label for="date">Select Date:</label>
+        <input class="date" id="date" name="date" type="text" value="" />
+        <label for="template">Template:</label>
+        <select id="template" name="template">
+          <option value="All">All</option>
+          <option value="General">General</option>
+          <option value="Prayer">Prayer</option>
+        </select>
+        <label for="templatetype">Type:</label>
+        <select id="template" name="template">
+          <option value="All">All</option>
+          <option value="Email">Email</option>
+          <option value="SMS">SMS</option>
+        </select>
+        <input id="submit" name="submit" type="submit" value="Edit"/>
+      </form>
+    </div>
     <div class="inbox">
       <table id="inbox" class="inbox">
         <tr class="header">
-          <th class="centre">Date</th>
+          <th rowspan="2" class="centre">Date</th>
           <?php 
           
           	//Write out the template labels
           	$default = $overview['default'];
           	
           	$templates = 0;
-          	
+
           	foreach($default as $label => $dataArray){ 
           	
           		$templates++; ?>
@@ -44,40 +75,28 @@
           	<?php } ?>
         </tr>
         <tr>
-          <th>&nbsp;</th>
           <?php
         
             //Write out email/sms for each template type
             for($i = 0; $i < $templates; $i++) { ?>
           
-              <th>Email</th>
-              <th>SMS</th>
+              <th colspan="2">Email</th>
+              <th colspan="2">SMS</th>
               
             <?php } ?>
         </tr>    
-        <tr>
-          <td>Default</td>
+        <?php 
+        
+          writeOutStatus($default, 'Default');
           
-          <?php 
-          
-          	//Get true/false for each template --> language entry
-            foreach($default as $key => $templatedata){
+          foreach($overview as $key => $data){
           	
-            	for($i = 0; $i < sizeof($templatedata); $i++){
-
-            		?>
-            		
-            		<td class="<?php echo getStatusClass($templatedata[$i]); ?>">&nbsp;</td>
-            		
-            		<?php 
-            		
-            	}
-            	
-            }
-          	//TODO need to rework this for more than just default
-          ?>
-          
-        </tr>
+          	if($key != 'default')
+            	writeOutStatus($data, $key, true);
+          	
+          }
+        
+        ?>
       </table>
     </div>
     <div id="spacer"></div>

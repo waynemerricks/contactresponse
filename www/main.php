@@ -22,6 +22,8 @@
     <title>CRS | Inbox</title>
     <link rel="stylesheet" type="text/css" href="css/crs.css">
     <link rel="stylesheet" type="text/css" href="css/menu.css">
+    <link rel="stylesheet" type="text/css" href="includes/jquery-ui.min.css">
+    <script type="text/javascript" src="includes/jquery-2.1.1.min.js"></script>
     <script type="text/javascript" src="includes/jquery-2.1.1.min.js"></script>
     <script type="text/javascript">
       /** JS Flags this contact for a quick generic auto reply
