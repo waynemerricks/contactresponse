@@ -43,49 +43,47 @@
     	$templates[$row['label']] = $row['id'];
      
     $result->close();
-    
+
     /** GET TEMPLATES FOR DATES **/ 
     //Get the default templates first
     $templateStatus = array();
     $default = array();
-    
-    foreach ($templates as $id => $label){
-    	
+ 
+    foreach ($templates as $label => $id){
+
     	for($i = 0; $i < sizeof($languages); $i++){
     		
-    		$default[$label][$languages[$i]] = checkTemplateExists($id, 'email', $languages[$i], '');
-    		$default[$label][$languages[$i]] = checkTemplateExists($id, 'sms', $languages[$i], '');
+    		$default[$label]['email'][$languages[$i]] = checkTemplateExists($id, 'email', $languages[$i], '');
+    		$default[$label]['sms'][$languages[$i]] = checkTemplateExists($id, 'sms', $languages[$i], '');
     		
     	}
     	
     }
     
-    $templateStatus[] = $default;
+    $templateStatus['default'] = $default;
+    $date = '';
     
     //Loop through each day and grab templates as necessary
     for($i = 0; $i <= $days; $i++){
     	
     	$templateForDay = array();
+    	if($i == 0)
+    		$date = date('Ymd');
+    	else
+    		$date = date('Ymd', strtotime(date('Ymd') . ' + ' . $i . ' days'));
     	
-    	foreach ($templates as $id => $label){
+    	foreach ($templates as $label => $id){
     		 
     		for($j = 0; $j < sizeof($languages); $j++){
     	
-    			$date = '';
-    			
-    			if($i == 0)
-    				$date = date('Ymd');
-    			else
-    				$date = date('Ymd', strtotime(date('Ymd') . ' + ' . $i . ' days'));
-    				
-    			$templateForDay[$label][$languages[$j]] = checkTemplateExists($id, 'email', $languages[$j], $date);
-    			$templateForDay[$label][$languages[$j]] = checkTemplateExists($id, 'sms', $languages[$j], $date);
+    			$templateForDay[$label]['email'][$languages[$j]] = checkTemplateExists($id, 'email', $languages[$j], $date);
+    			$templateForDay[$label]['sms'][$languages[$j]] = checkTemplateExists($id, 'sms', $languages[$j], $date);
     	
     		}
     		 
     	}
     	
-    	$templateStatus[] = $templateForDay;
+    	$templateStatus[$date] = $templateForDay;
     	
     }
     
@@ -113,8 +111,8 @@
   	if(strlen($date) > 0)
   		$templateFile = $date . '-' . $templateFile;
   	
-  	return is_file('../../templates/' . $templateFile);
-  	
+  	return is_file('../templates/' . $templateFile);
+
   }
   
   /**
@@ -137,10 +135,10 @@
   	else{
 
   		$today = new DateTime(date('Y-m-d'));
-  		$statusDate = new DateTime(strtotime($date));
+  		$statusDate = DateTime::createFromFormat('Y-m-d', $date);
   		$difference = $today->diff($statusDate);
   		
-  		$interval = $datetime1->diff($datetime2);
+  		$interval = $today->diff($statusDate);
   		$days = $interval->format('%r%a');
   		
   		if($days <= 2)
@@ -153,5 +151,54 @@
   	return $class;
   	
   }
+  
+  /**
+   * Writes out the existing red/green/orange data for the given template array
+   * @param unknown_type $data
+   * @param unknown_type $label label to use to represent this row
+   */
+  function writeOutStatus($data, $label, $date = null){ 
+  
+  	$rowLabel = $label;
+  	
+  	if($label != 'Default'){
+  	
+  		$temp = DateTime::createFromFormat('Ymd', $label);
+  		$rowLabel = date('jS F', $temp->getTimestamp());
+  		
+  	}?>
+  	
+  	<tr>
+  	  <td class="centre"><?php echo $rowLabel; ?></td>
+  	
+  	<?php
+  	
+  	if($date === TRUE){
+
+  		$temp = DateTime::createFromFormat('Ymd', $label);
+  		$date = date('Y-m-d', $temp->getTimestamp());
+  		
+  	}
+  		
+  	//Get true/false for each template --> email/sms --> language entry
+  	foreach($data as $key => $templatedata){
+  	
+  		foreach($templatedata as $type => $language){
+  	
+  	    	foreach($language as $lang => $value){ ?>
+  	            			
+  	          <td class="<?php echo getStatusClass($value, $date); ?>">&nbsp;</td>
+  	            			
+  	        <?php  }
+  	            		
+  	    }
+  	            	
+  	}
+  	
+  	?>
+  	          
+  	</tr>
+  	        
+  <?php }
 
 ?>
