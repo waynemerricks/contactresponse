@@ -278,3 +278,21 @@ td.icon {
   width: 100%;
   height: 45px;
 }
+
+.green {
+	
+	background: green;
+	
+}
+
+.red {
+	
+	background: red;
+	
+}
+
+.orange {
+	
+	background: orange;
+	
+}
