@@ -447,21 +447,32 @@ public class EmailReceiver extends Thread{
 			
 			String dateTime = null;
 			
-			if(lines.length > 1)
-				dateTime = lines[1].split("\\+")[0].trim(); //$NON-NLS-1$
-			else
-				dateTime = headerReceived.split("\\+")[0].trim(); //$NON-NLS-1$
+			if(lines.length > 0){
 				
-			if(dateTime.contains(";")) //$NON-NLS-1$
-				dateTime = dateTime.split("; ")[1]; //$NON-NLS-1$
-			
-			SimpleDateFormat sdf = new SimpleDateFormat("E, d MMM yyyy HH:mm:ss"); //$NON-NLS-1$
-			
-			try{
+				//Find the line with a + in it and split by +
+				int i = 0;
 				
-				receivedDate = sdf.parse(dateTime);
+				while(i < lines.length && dateTime == null){
+					
+					if(lines[i].contains("+")) //$NON-NLS-1$
+						dateTime = lines[i].split("\\+")[0].trim(); //$NON-NLS-1$
+					
+					i++;
+					
+				}
 				
-			}catch(ParseException e){
+				if(dateTime.contains(";")) //$NON-NLS-1$
+					dateTime = dateTime.split("; ")[1]; //$NON-NLS-1$
+				
+				SimpleDateFormat sdf = new SimpleDateFormat("E, d MMM yyyy HH:mm:ss"); //$NON-NLS-1$
+				
+				try{
+					
+					receivedDate = sdf.parse(dateTime);
+					
+				}catch(ParseException e){
+					
+				}
 				
 			}
 			
