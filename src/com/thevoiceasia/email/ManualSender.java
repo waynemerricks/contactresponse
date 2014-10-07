@@ -221,7 +221,7 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		    
 			for(int i = 0; i < to.length(); i++){
 				
-				char c = from.charAt(i);
+				char c = to.charAt(i);
 				
 				if(Character.isAlphabetic(c)){
 					
@@ -240,7 +240,7 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 			}
 			
 			//Strip any Thunderbird signatures from emails/SMS
-			body = stripThunderbirdSig(body);
+			body = stripThunderbirdSig(body).trim();
 			
 			//Add to DB for outgoing and archive
 			insertedId = addOutgoingMessageToDB(type, messageId, userId, 
@@ -283,10 +283,13 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 				String toNumber = getContactPhone(messageId);
 				
 				//Debug = send email not sms
-				if(DEBUG)
+				if(DEBUG){
+					if(email == null)
+						email = new EmailSender(senderHost, senderUser, senderPass);
+					
 					sendEmail(settings.get("debugRecipient"),  //$NON-NLS-1$
 							"SMS TO: " + toNumber, body); //$NON-NLS-1$
-				else
+				}else
 					success = sms.sendSMS(toNumber, body);
 				
 			}
@@ -553,7 +556,7 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		
 		String value = null;
 		
-		String SQL = "SELECT `" + field + "` FROM `contacts WHERE `id` = " + id;  //$NON-NLS-1$//$NON-NLS-2$
+		String SQL = "SELECT `" + field + "` FROM `contacts` WHERE `id` = " + id;  //$NON-NLS-1$//$NON-NLS-2$
 		
 		Statement select = null;
 		ResultSet results = null;
@@ -693,8 +696,10 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		
 		//Strip everything after this string including the string itself
 		if(body.contains("-- \n")) //$NON-NLS-1$
-			body = body.substring(0, body.indexOf("-- \n")); //$NON-NLS-1$
-			
+			body = body.substring(0, body.indexOf("-- \n")).trim(); //$NON-NLS-1$
+		else if(body.contains("-- \r\n"))//$NON-NLS-1$
+			body = body.substring(0, body.indexOf("-- \r\n")).trim();//$NON-NLS-1$
+		
 		return body;
 		
 	}
@@ -724,7 +729,8 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss"); //$NON-NLS-1$
 		
 		String expiredTimeStamp = sdf.format(expired);
-		String SQL = "UPDATE `messages` SET `status` = 'D' WHERE `updated` < " + //$NON-NLS-1$
+		String SQL = "UPDATE `messages` SET `status` = 'D' WHERE " + //$NON-NLS-1$
+				"`status` = 'T' AND `updated` < " + //$NON-NLS-1$
 				expiredTimeStamp; 
 		
 		Statement resetManual = null;
@@ -803,6 +809,7 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 				try {
 					
 					manual.getEmails();
+					
 					if(manual.isDatabaseConnected())
 						manual.disconnectFromDB();
 					
