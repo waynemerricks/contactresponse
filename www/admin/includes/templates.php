@@ -15,35 +15,14 @@
    *   ...
    *   [today + $days as Ymd] => [template1] ... 
    */
-  function getOverview($days){
+  function getOverview($days, $mysqli = null){
   	
-  	$mysqli = getDatabaseRead();
+  	if($mysqli == null)
+  		$mysqli = getDatabaseRead();
   	
-  	/** LANGUAGES **/
-  	//Read in the languages we need to look up for the templates
-  	$sql = 'SELECT LOWER(`language`) AS `language` FROM `languages` WHERE 
-  		`mappedTo` = 0';
-  	$languages = array();
-  	
-  	$result = $mysqli->query($sql);
-
-    while($row = $result->fetch_assoc())
-		$languages[] = $row['language'];  	
-  	
-    $result->close();
+  	$languages = getLanguages($mysqli);
+  	$templates = getTemplates($mysqli);
     
-    /** TEMPLATES **/
-    //Read in the templates we'll be looking for
-    $sql = 'SELECT `label`, `id` FROM `templates` ORDER BY `label` ASC';
-    $templates = array();
-    
-    $result = $mysqli->query($sql);
-    
-    while($row = $result->fetch_assoc())
-    	$templates[$row['label']] = $row['id'];
-     
-    $result->close();
-
     /** GET TEMPLATES FOR DATES **/ 
     //Get the default templates first
     $templateStatus = array();
@@ -152,6 +131,134 @@
   	
   }
   
+  /**
+   * Get the templates we can send out
+   * @param MySQL::Connection $mysqli
+   * @return HashMap<String, int>
+   */
+  function getTemplates($mysqli = null){
+  	
+  	if($mysqli == null)
+  		$mysqli = getDatabaseRead();
+  	
+  	/** TEMPLATES **/
+  	//Read in the templates we'll be looking for
+  	$sql = 'SELECT `label`, `id` FROM `templates` ORDER BY `label` ASC';
+  	$templates = array();
+  	 
+  	$result = $mysqli->query($sql);
+  	 
+  	while($row = $result->fetch_assoc())
+  		$templates[$row['label']] = $row['id'];
+  	
+  	$result->close();
+  	
+  	return $templates;
+  	
+  }
+  
+  /**
+   * Gets the languages we support for templaes as an array
+   * @param MySQL::Connection $mysqli
+   * @return String[] 
+   */
+  function getLanguages($mysqli = null){
+  	
+  	if($mysqli == null)
+  		$mysqli = getDatabaseRead();
+  	 
+  	$mysqli = getDatabaseRead();
+  	
+  	/** LANGUAGES **/
+  	//Read in the languages we need to look up for the templates
+  	$sql = 'SELECT LOWER(`language`) AS `language` FROM `languages` WHERE
+  	`mappedTo` = 0';
+  	$languages = array();
+  	
+  	$result = $mysqli->query($sql);
+  	 
+  	while($row = $result->fetch_assoc())
+  		$languages[] = $row['language'];
+  	
+  	$result->close();
+  	
+  	return $languages;
+  	
+  }
+  
+  function getEditTemplateBox($id, $type, $language, $date){
+  	
+  	$templateContent = '';
+  	
+  	if(checkTemplateExists($id, $type, $language, $date){
+  		
+  		//Get the template content from file
+  		$templateFile = $id . '_' . $type;
+  		 
+  		if(strlen($language) > 0)
+  			$templateFile .= '_' . $language;
+  		 
+  		if(strlen($date) > 0)
+  			$templateFile = $date . '-' . $templateFile;
+  		
+  		$templateContent = getTemplate($templateFile);
+  		
+  	}
+  	
+  	//TODO HTML To display this + the wysiwyg editor
+  	
+  }
+  
+  /**
+   * Gets the message content from the file archive
+   * @param $id ID of message to retrieve
+   * @param $type Message type
+   * @return string containing plain text message
+   */
+  function getTemplate($templateFileName){
+  
+  	$message = array();
+  
+  	$message['body'] = file_get_contents('../templates/' . $templateFileName);
+  
+  	$pos = strpos($templateFileName, 'email');
+  	
+  	if($pos !== FALSE){//Email so get subject
+  		
+  		$message['subject'] = getSubject($message['body']);
+  		$message['body'] = removeFirstLine($message['body']);
+  
+  	}
+  
+  	return $message;
+  
+  }
+  
+  function getSubject($string){
+  
+  	$pos = strpos($string, "\n");
+  
+  	if($pos !== FALSE)
+  		$string = substr($string, 0, $pos);
+  
+  	if(substr($string, 0, 2) === 'S:')
+  		$string = substr($string, 2);
+  
+  	return $string;
+  
+  }
+  
+  
+  function removeFirstLine($string){
+  
+  	$pos = strpos($string, "\n");
+  
+  	if($pos !== FALSE)
+  		$string = substr($string, $pos + 1);
+  
+  	return $string;
+  
+  }
   /**
    * Writes out the existing red/green/orange data for the given template array
    * @param unknown_type $data

@@ -13,7 +13,9 @@
   
   include('includes/templates.php');
   
-  $overview = getOverview(14);
+  $overview = getOverview(14, $mysqli);
+  $templates = getTemplates($mysqli);
+  $languages = getLanguages($mysqli);
   
 ?>
 <html>
@@ -45,8 +47,9 @@
         <label for="template">Template:</label>
         <select id="template" name="template">
           <option value="All">All</option>
-          <option value="General">General</option>
-          <option value="Prayer">Prayer</option>
+          <?php foreach($templates as $label => $id){ ?>
+            <option value="<?php echo $id . '-' . $label; ?>"><?php echo $label; ?></option>
+          <?php }?>
         </select>
         <label for="templatetype">Type:</label>
         <select id="template" name="template">
@@ -66,11 +69,7 @@
           	//Write out the template labels
           	$default = $overview['default'];
           	
-          	$templates = 0;
-
-          	foreach($default as $label => $dataArray){ 
-          	
-          		$templates++; ?>
+          	foreach($default as $label => $dataArray){ ?>
           			
           		<th colspan="4"><?php echo $label; ?></th>
           		
@@ -80,7 +79,7 @@
           <?php
         
             //Write out email/sms for each template type
-            for($i = 0; $i < $templates; $i++) { ?>
+            for($i = 0; $i < sizeof($templates); $i++) { ?>
           
               <th colspan="2">Email</th>
               <th colspan="2">SMS</th>
@@ -102,8 +101,28 @@
       </table>
     </div>
     <div id="edittemplate">
+      <?php 
       
-    
+        $templateLabel = 'Default Template';
+        
+        if(isset($_POST['date']) && strlen($_POST['date']) > 0){ 
+        
+        	$date = DateTime::createFromFormat('Y-m-d', $_POST['date']);
+        	
+        	if($date === FALSE){
+        		
+        		$templateLabel = 'Error with date format, please check and try again';
+        		
+        	}else 
+        		$templateLabel = 'Template for the ' . date('jS F', $date->getTimestamp());
+        		
+        }
+        
+      ?>
+      <p><strong><?php echo $templateLabel; ?></strong></p>
+      
+      
+
     </div>
     <div id="spacer"></div>
     <div id="footer">
