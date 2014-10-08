@@ -1,13 +1,14 @@
 package com.thevoiceasia.email;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.net.UnknownHostException;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.logging.FileHandler;
 
@@ -17,10 +18,9 @@ import com.thevoiceasia.messages.Footers;
 import com.thevoiceasia.messages.MessageArchiver;
 import com.thevoiceasia.sms.SMSSender;
 
-public class ManualSender extends MessageArchiver implements EmailReader{
+public class ManualSender extends MessageArchiver{
 
-	private String mailHost = null, mailUser = null, mailPass = null,
-				senderHost =  null, senderUser = null, senderPass = null,
+	private String senderHost =  null, senderUser = null, senderPass = null,
 				templateBasePath = null;
 	private HashMap<String, String> settings = null;
 	private HashMap<String, String> users = null;
@@ -28,7 +28,6 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 	private SMSSender sms = null;
 	private boolean DEBUG = false;
 	private Footers footers = null;
-	private long expiredTimeOut = 0L;
 	
 	/**
 	 * Works on the incoming inbox for manual replies, also responsible for 
@@ -37,9 +36,6 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 	 * @param user User Name for CRS Database
 	 * @param pass Password for CRS Database
 	 * @param dbase Database Name for CRS Database
-	 * @param mailHost Host Name for incoming inbox
-	 * @param mailUser User Name for incoming inbox
-	 * @param mailPass Password for incoming inbox
 	 * @param archivePath Path to archive the messages on incoming inbox
 	 * @param senderHost Host Name for outgoing emails
 	 * @param senderUser User Name for outgoing emails
@@ -49,15 +45,11 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 	 *   as an email
 	 */
 	public ManualSender(String host, String user, String pass, String dbase,
-			String mailHost, String mailUser, String mailPass, 
 			String archivePath, String senderHost, String senderUser, 
 			String senderPassword, String templatePath, boolean debug){
 		
 		super(host, user, pass, dbase, archivePath);
 		
-		this.mailHost = mailHost;
-		this.mailUser = mailUser;
-		this.mailPass = mailPass;
 		this.senderHost = senderHost;
 		this.senderUser = senderUser;
 		this.senderPass = senderPassword;
@@ -69,10 +61,6 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		database.connect();
 		readSettings();
 		readUsers();
-		
-		//Calculate timeout in millis
-		int minutes = Integer.parseInt(settings.get("manualTimeOut")); //$NON-NLS-1$
-		expiredTimeOut = minutes * 60000;
 		
 	}
 
@@ -160,6 +148,20 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 	}
 
 	/**
+	 * Sends an SMS to the given phone number
+	 * @param phoneNumber
+	 * @param text
+	 * @return
+	 */
+	private boolean sendSMS(String phoneNumber, String text){
+		
+		if(sms == null)
+			sms = new SMSSender(database);
+		
+		return sms.sendSMS(phoneNumber, text);
+		
+	}
+	/**
 	 * Sends an email and handles exceptions
 	 * @param recipient
 	 * @param subject
@@ -172,6 +174,9 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		
 		try{
 			
+			if(email == null)
+				email = new EmailSender(senderHost, senderUser, senderPass);
+				
 			success = email.sendEmail(recipient, 
 					settings.get("emailFromAddress"), subject,  //$NON-NLS-1$
 					body);
@@ -193,282 +198,101 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		
 	}
 	
-	@Override
-	public boolean receiveEmail(Date receivedDate, String from, String to,
-			String name, String body, String subject) {
+	public void getEmails(){
 		
-		String messageId = ""; //$NON-NLS-1$
-		String type = ""; //$NON-NLS-1$
-		int insertedId = -1;
-	    boolean success = false;
+		//Read any V status messages in messages table
+		//Turn back into an email/sms and send as appropriate
+		String SQL = "SELECT `id`, `owner`, `type`, `created_by` FROM " + //$NON-NLS-1$
+				"`messages` WHERE `direction` = 'O' AND `status` = 'V'"; //$NON-NLS-1$
 		
-		if(to.contains("@" + settings.get("internalEmailDomain"))){//$NON-NLS-1$ //$NON-NLS-2$
-			
-			if(body == null)
-				body = ""; //$NON-NLS-1$
-			else
-				body = body.trim();
-			
-			if(!isDatabaseConnected())
-				connectToDB();
-				
-			//94086e3
-			//last message id, type [e|s], user id
-			//Get message id, message type and user id
-			to = to.split("@")[0]; //$NON-NLS-1$
-			
-		    String userId = ""; //$NON-NLS-1$
-		    
-			for(int i = 0; i < to.length(); i++){
-				
-				char c = to.charAt(i);
-				
-				if(Character.isAlphabetic(c)){
-					
-					//we're at the split point
-					type = ("" + c).toUpperCase(); //$NON-NLS-1$
-					
-				}else{
-					
-					if(type.length() == 0)//We're still reading message id
-						messageId += c;
-					else//We're getting the user id
-						userId += c;
-					
-				}
-				
-			}
-			
-			//Strip any Thunderbird signatures from emails/SMS
-			body = stripThunderbirdSig(body).trim();
-			
-			//Add to DB for outgoing and archive
-			insertedId = addOutgoingMessageToDB(type, messageId, userId, 
-					subject, body);
-			
-			//Send the message
-			if(type.equals("E") && insertedId != -2){//Email //$NON-NLS-1$
-				
-				if(email == null)
-					email = new EmailSender(senderHost, senderUser, senderPass);
-				
-				String recipient = getContactEmail(messageId);
-				
-				if(DEBUG){
-					
-					body = "Original Recipient: " + recipient + "\n" + body; //$NON-NLS-1$ //$NON-NLS-2$
-					recipient = settings.get("debugRecipient"); //$NON-NLS-1$
-					
-				}
-				
-				//Add -- From User to the end of the message
-				body += "\n--\n\t" + users.get(userId); //$NON-NLS-1$
-				body += getFooter(messageId);//Add the footers as necessary
-				
-				sendEmail(recipient, subject, body);
-				
-			}else if(type.equals("S") && insertedId != -2){//SMS //$NON-NLS-1$
-				
-				if(sms == null)
-					sms = new SMSSender(database);
-				
-				//Put the first name of user name on the end of message
-				//e.g. John Smith becomes: blah blah blah -- John
-				//SMS are character tight (although it will split it just costs
-				//you more)
-				//body += "-- " + users.get(userId).substring(0, 1); //$NON-NLS-1$
-				if(users.get(userId).contains(" ")) //$NON-NLS-1$
-					body += "-- " + users.get(userId).split(" ")[0];//Just first name //$NON-NLS-1$ //$NON-NLS-2$
-				
-				String toNumber = getContactPhone(messageId);
-				
-				//Debug = send email not sms
-				if(DEBUG){
-					if(email == null)
-						email = new EmailSender(senderHost, senderUser, senderPass);
-					
-					sendEmail(settings.get("debugRecipient"),  //$NON-NLS-1$
-							"SMS TO: " + toNumber, body); //$NON-NLS-1$
-				}else
-					success = sms.sendSMS(toNumber, body);
-				
-			}
-			
-		}else
-			success = true;//flag as dealt with so email receiver can mark for deletion
-
-		if(success){
-			
-			//M = Sent Manual Email
-			//N = Sent Manual SMS
-			//A = Archive older than where status = T
-			String status = "M"; //$NON-NLS-1$
-			
-			if(type.equals("S")) //$NON-NLS-1$
-				status = "N"; //$NON-NLS-1$
-			
-			updateMessageStatus(Integer.parseInt(messageId), insertedId, 
-					status);
-			
-		}else{
-			
-			//Mark as error
-			//G = Failed Manual Email
-			//H = Failed Manual SMS
-			String status = "G"; //$NON-NLS-1$
-			
-			if(type.equals("S")) //$NON-NLS-1$
-				status = "H"; //$NON-NLS-1$
-			
-			updateMessageStatus(Integer.parseInt(messageId), insertedId, 
-					status);
-			
-		}
-		
-		return success;
-		
-	}
-	
-	/**
-	 * Adds the outgoing message to the DB and archive files
-	 * @param type Message Type E/S (Email/SMS)
-	 * @param messageId ID of the newest message from a contact covered by this 
-	 *   outgoing reply
-	 * @param userId ID of the user that created this outgoing reply
-	 * @param subject Subject of the message (ignored for SMS)
-	 * @param body Body of the message
-	 * @return record id returned when inserted into the messages table
-	 *   or -1 if not inserted or -2 if blank message
-	 */
-	private int addOutgoingMessageToDB(String type, String messageId,
-			String userId, String subject, String body) {
-		
-		int insertedId = -1;
-		PreparedStatement insertMessage = null;
+		Statement manualEmails = null;
 		ResultSet results = null;
-		
-		String preview = body.replaceAll("\n", "  ").replaceAll("\r", ""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
-		preview = preview.trim();
-		
-		if(preview.length() < 1){
-			
-			if(subject.trim().length() > 1)
-				preview = subject;
-			else
-				insertedId = -2;//flag as error
-		}
-		
-		if(insertedId != -1){
-			
-			if(preview.length() > 50)
-				preview = preview.substring(0, 47) + "..."; //$NON-NLS-1$
-			
-			try{
-				
-				String SQL = "INSERT INTO `messages` (`owner`, `assigned_user`, " + //$NON-NLS-1$
-						"`type`, `direction`, `created_by`, `status`, `preview`) " + //$NON-NLS-1$
-						"VALUES (?, ?, ?, ?, ?, ?, ?)"; //$NON-NLS-1$
-				
-				insertMessage = database.getConnection().prepareStatement(SQL);
-				
-				insertMessage.setInt(1, getContactId(Integer.parseInt(messageId)));//owner
-				insertMessage.setInt(2, Integer.parseInt(userId));//Assign to user who sent this
-				insertMessage.setString(3, type); //Type
-				insertMessage.setString(4, "O"); //Direction //$NON-NLS-1$
-				insertMessage.setInt(5, Integer.parseInt(userId)); //Created By
-				insertMessage.setString(6, "V"); //status V ==> Unsent Manual  //$NON-NLS-1$
-				insertMessage.setString(7, preview); //preview
-				insertMessage.execute(SQL, Statement.RETURN_GENERATED_KEYS);
-					
-				//Execute it
-				int rows = insertMessage.executeUpdate();
-				
-				if(rows > 0){
-				
-					results = insertMessage.getGeneratedKeys();
-					
-					while(results.next())
-						insertedId = results.getInt(1);
-					
-				}else
-					LOGGER.warning("Could not insert message"); //$NON-NLS-1$
-				
-			}catch(SQLException e){
-				
-				LOGGER.severe("Error inserting outgoing message"); //$NON-NLS-1$
-				e.printStackTrace();
-				
-			}finally{
-				
-				close(insertMessage, results);
-				
-			}
-			
-		}
-		
-		return insertedId;
-		
-	}
-
-	/**
-	 * Updates contact messages and the outgoing reply with the required status
-	 * @param contactMessageId newest message ID from the contact that this 
-	 *   relates to
-	 * @param outgoingMessageId ID of the outgoing message to set the status
-	 * @param status Status to set outgoing message to
-	 */
-	private boolean updateMessageStatus(int contactMessageId, 
-			int outgoingMessageId, String status) {
-		
-		boolean updated = true;
-		
-		int contactId = getContactId(contactMessageId);
-		String currentSQL = null;
-		
-		String[] SQL = null;
-		
-		if(outgoingMessageId == -1 || outgoingMessageId == -2){
-			
-			//Error so reset status back to D
-			SQL = new String[]{
-				"UPDATE `messages` SET `status` = 'D' WHERE `status` = 'T' " + //$NON-NLS-1$
-				"AND `owner` = " + contactId + " AND `id` <= " +  //$NON-NLS-1$ //$NON-NLS-2$
-				contactMessageId
-			};
-			
-		}else{
-			
-			SQL = new String[]{
-				"UPDATE `messages` SET `status` = '" + status +   //$NON-NLS-1$
-					"' WHERE `id` = " + outgoingMessageId,  //$NON-NLS-1$
-				"UPDATE `messages` SET `status` = 'R' WHERE `id` = " + //$NON-NLS-1$
-					contactMessageId, 
-				"UPDATE `messages` SET `status` = 'A' WHERE `status` = 'T' " + //$NON-NLS-1$
-					"AND `owner` = " + contactId + " AND `id` < " +  //$NON-NLS-1$ //$NON-NLS-2$
-					contactMessageId
-			};
-			
-		}
-		
-		Statement updateMessages = null;
 		
 		try{
 			
-			updateMessages = database.getConnection().createStatement();
+			manualEmails = database.getConnection().createStatement();
 			
-			for(int i = 0; i < SQL.length; i++){
+			if(manualEmails.execute(SQL)){
 				
-				if(updated == true){
+				results = manualEmails.getResultSet();
+				
+				while(results.next()){
 					
-					currentSQL = SQL[i];
-					updateMessages.execute(SQL[i]);
+					String type = results.getString("type"); //$NON-NLS-1$
 					
-					if(updateMessages.getUpdateCount() < 1){
+					if(type.equals("E")){ //$NON-NLS-1$
 						
-						LOGGER.warning("Could not update messages table: " +  //$NON-NLS-1$
-								currentSQL);
-						updated = false;
+						//Email
+						String toEmail = getContactEmail(
+								results.getInt("owner")); //$NON-NLS-1$
 						
+						String[] temp = readFromArchive(results.getInt("id")); //$NON-NLS-1$
+						String subject = ""; //$NON-NLS-1$
+						String body = ""; //$NON-NLS-1$
+						
+						if(temp.length == 1)//only body no subject
+							body = temp[0];
+						else if(temp.length == 2){//subject + body
+							
+							subject = temp[0];
+							body = temp[1];
+							
+						}
+						
+						//Append Footer
+						body = body + "\n" + getFooter(results.getInt("owner"));  //$NON-NLS-1$//$NON-NLS-2$
+						
+						if(!DEBUG){
+							
+							if(sendEmail(toEmail, subject, body))
+								updateMessageStatus(results.getInt("id"), "S"); //$NON-NLS-1$ //$NON-NLS-2$
+							else
+								updateMessageStatus(results.getInt("id"), "F"); //$NON-NLS-1$ //$NON-NLS-2$
+							
+						}else{
+								
+							body = "Original Recipient: " + toEmail + "\n" + body; //$NON-NLS-1$ //$NON-NLS-2$
+							toEmail = settings.get("debugRecipient"); //$NON-NLS-1$
+							sendEmail(toEmail, subject, body);
+							
+						}
+						
+					}else if(type.equals("S")){ //$NON-NLS-1$
+						
+						// SMS
+						String phone = getContactPhone(
+								results.getInt("owner")); //$NON-NLS-1$
+						
+						String[] temp = readFromArchive(results.getInt("id")); //$NON-NLS-1$
+						
+						String body = ""; //$NON-NLS-1$
+						
+						if(temp.length == 1)//should always be 1 its an SMS so no subject
+							body = temp[0].trim();
+						
+						//Append User Name
+						String user = users.get(results.getString("created_by")); //$NON-NLS-1$
+						
+						if(user.contains(" ")) //$NON-NLS-1$
+							user = user.split(" ")[0]; //$NON-NLS-1$
+						
+						body = body + " --" + user;  //$NON-NLS-1$
+						
+						if(!DEBUG){
+							
+							if(sendSMS(phone, body))
+								updateMessageStatus(results.getInt("id"), "S"); //$NON-NLS-1$ //$NON-NLS-2$
+							else
+								updateMessageStatus(results.getInt("id"), "F"); //$NON-NLS-1$ //$NON-NLS-2$
+							
+						}else{
+							
+							//Send DEBUG email instead
+							String subject = "SMS TO: " + phone; //$NON-NLS-1$
+							sendEmail(settings.get("debugRecipient"), subject,  //$NON-NLS-1$
+									body);
+							
+						}
 					}
 					
 				}
@@ -477,7 +301,142 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 			
 		}catch(SQLException e){
 			
-			LOGGER.severe("Error updating message status: " + currentSQL); //$NON-NLS-1$
+			LOGGER.severe("Error getting manual replies from messages table"); //$NON-NLS-1$
+			e.printStackTrace();
+			
+		}finally{
+			
+			close(manualEmails, results);
+			
+		}
+		
+	}
+	
+	
+	/**
+	 * Reads the given file and returns the content
+	 * @param path path to read
+	 * @return Array[0] = content or in emails case 0 = subject, 1 = content
+	 */
+	private String[] readArchiveFile(String path){
+		
+		int strings = 1;
+		
+		if(path.contains("email")) //$NON-NLS-1$
+			strings = 2;
+		
+		String[] returnValues = new String[strings];
+		
+		for(int i = 0; i < strings; i++)
+			returnValues[i] = ""; //$NON-NLS-1$
+		
+		File template = new File(path);
+		BufferedReader reader = null;
+		
+		if(template.exists() && template.canRead()){
+			
+			try{
+				
+				reader = new BufferedReader(
+						new FileReader(template));
+				
+				boolean done = false;
+				boolean first = true;
+				
+				while(!done){
+					
+					String line = reader.readLine();
+					
+					if(line == null)
+						done = true;
+					else{
+						
+						if(first && strings == 2 && line.startsWith("S:")){ //$NON-NLS-1$
+							
+							first = false;
+							returnValues[0] = line.substring(2);//Subject
+							
+						}else
+							returnValues[returnValues.length - 1] += line + "\n"; //$NON-NLS-1$
+							
+					}
+					
+				}
+				
+			}catch(FileNotFoundException e){
+				
+				LOGGER.severe("Template file not found " + template.getName()); //$NON-NLS-1$
+				e.printStackTrace();
+				
+			}catch(IOException e){
+				
+				LOGGER.severe("Template IO Error " + template.getName()); //$NON-NLS-1$
+				e.printStackTrace();
+				
+			}finally{
+				
+				if(reader != null){
+					
+					try{
+						reader.close();
+					}catch(Exception e){}
+					
+					reader = null;
+					
+				}
+				
+			}
+			
+		}
+		
+		return returnValues;
+		
+	}
+	
+	/**
+	 * Reads the given message id from the archive
+	 * @param id
+	 * @return array[0] subject array[1] body (or just array[0] body)
+	 */
+	private String[] readFromArchive(int id) {
+		
+		return readArchiveFile(ARCHIVE_PATH +
+				System.getProperty("file.separator") +  //$NON-NLS-1$
+				id);
+		
+	}
+
+	/**
+	 * Updates contact messages and the outgoing reply with the required status
+	 * @param messageId ID of the message to set the status
+	 * @param status Status to set outgoing message to
+	 */
+	private boolean updateMessageStatus(int messageId, String status) {
+		
+		boolean updated = true;
+		
+		String SQL = "UPDATE `messages` SET `status` = '" + status +   //$NON-NLS-1$
+			  		 "' WHERE `id` = " + messageId;  //$NON-NLS-1$
+			
+		Statement updateMessages = null;
+		
+		try{
+			
+			updateMessages = database.getConnection().createStatement();
+			
+			updateMessages.execute(SQL);
+					
+			if(updateMessages.getUpdateCount() < 1){
+						
+				LOGGER.warning("Could not update messages table: " +  //$NON-NLS-1$
+								SQL);
+						updated = false;
+						
+			}
+					
+		}catch(SQLException e){
+			
+			LOGGER.severe("Error updating message status: " + SQL); //$NON-NLS-1$
 			e.printStackTrace();
 			updated = false;
 			
@@ -492,55 +451,11 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 	}
 
 	/**
-	 * Gets a contact id via a message id lookup
-	 * @param contactMessageId id to lookup
-	 * @return owner of that message (maps to contact id)
-	 */
-	private int getContactId(int contactMessageId) {
-		
-		int contactId = -1;
-		String SQL = "SELECT `owner` FROM `messages` WHERE `id` = " +  //$NON-NLS-1$
-				contactMessageId;
-		
-		Statement selectMessage = null;
-		ResultSet results = null;
-		
-		try{
-			
-			selectMessage = database.getConnection().createStatement();
-			
-			if(selectMessage.execute(SQL)){
-				
-				results = selectMessage.getResultSet();
-				
-				while(results.next())
-					contactId = results.getInt("owner"); //$NON-NLS-1$
-				
-			}
-			
-		}catch(SQLException e){
-			
-			LOGGER.severe("Error getting contact id from message " +  //$NON-NLS-1$
-					contactMessageId);
-			
-		}finally{
-			
-			close(selectMessage, results);
-			
-		}
-		
-		return contactId;
-		
-	}
-
-	/**
-	 * Gets the contacts phone from the given message Id
-	 * @param messageId
+	 * Gets the contacts phone from the given contact Id
+	 * @param contactId
 	 * @return
 	 */
-	private String getContactPhone(String messageId) {
-		
-		int contactId = getContactId(Integer.parseInt(messageId));
+	private String getContactPhone(int contactId) {
 		
 		return getContactValue("phone", contactId); //$NON-NLS-1$
 		
@@ -591,12 +506,10 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 
 	/**
 	 * Gets the contacts email associated with the given message
-	 * @param messageId
+	 * @param contactId
 	 * @return
 	 */
-	private String getContactEmail(String messageId) {
-		
-		int contactId = getContactId(Integer.parseInt(messageId));
+	private String getContactEmail(int contactId) {
 		
 		return getContactValue("email", contactId); //$NON-NLS-1$
 		
@@ -607,14 +520,12 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 	 * @param messageId Message from a contact to lookup
 	 * @return Footer to be appended to outgoing message
 	 */
-	private String getFooter(String messageId) {
+	private String getFooter(int contactId) {
 		
 		String footer = ""; //$NON-NLS-1$
 		
 		if(footers == null)
 			footers = new Footers(database, templateBasePath);
-		
-		int contactId = getContactId(Integer.parseInt(messageId));
 		
 		//Get the language for the given contact
 		String SQL = "SELECT `languages.mappedTo` FROM `contacts` " + //$NON-NLS-1$
@@ -685,75 +596,6 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 	}
 
 	/**
-	 * Removes any thunderbird signatures from the given string.
-	 * 
-	 * Very simple: TB prefixes signatures with "-- \n" so if it contains
-	 * this, substring previous to this string
-	 * @param body String to check
-	 * @return String minus TB signature
-	 */
-	private String stripThunderbirdSig(String body) {
-		
-		//Strip everything after this string including the string itself
-		if(body.contains("-- \n")) //$NON-NLS-1$
-			body = body.substring(0, body.indexOf("-- \n")).trim(); //$NON-NLS-1$
-		else if(body.contains("-- \r\n"))//$NON-NLS-1$
-			body = body.substring(0, body.indexOf("-- \r\n")).trim();//$NON-NLS-1$
-		
-		return body;
-		
-	}
-
-	/**
-	 * Get emails to process
-	 * @throws InterruptedException 
-	 */
-	public void getEmails() throws InterruptedException{
-		
-		EmailReceiver receiver = new EmailReceiver(mailHost, mailUser, mailPass, this);
-		receiver.start();
-		receiver.join();
-		checkForTimedOutMessages();
-		
-	}
-	
-	/**
-	 * Resets any messages waiting for a manual response that have timed out
-	 * back to the default D Status so people will once again see them in 
-	 * their inboxes
-	 */
-	private void checkForTimedOutMessages() {
-		
-		Date expired = new Date(new Date().getTime() - expiredTimeOut);
-		
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss"); //$NON-NLS-1$
-		
-		String expiredTimeStamp = sdf.format(expired);
-		String SQL = "UPDATE `messages` SET `status` = 'D' WHERE " + //$NON-NLS-1$
-				"`status` = 'T' AND `updated` < " + //$NON-NLS-1$
-				expiredTimeStamp; 
-		
-		Statement resetManual = null;
-		
-		try{
-			
-			resetManual = database.getConnection().createStatement();
-			resetManual.executeUpdate(SQL);
-				
-		}catch(SQLException e){
-			
-			LOGGER.severe("Error while resetting manual response messages"); //$NON-NLS-1$
-			e.printStackTrace();
-			
-		}finally{
-			
-			close(resetManual, null);
-			
-		}
-		
-	}
-
-	/**
 	 * Set the Logger object
 	 */
 	private void setupLogging(){
@@ -762,7 +604,8 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		
 		try{
 			
-			LOGGER.addHandler(new FileHandler("contactresponsemanual.log")); //$NON-NLS-1$
+			LOGGER.addHandler(new FileHandler(
+					"contactresponsemanualsender.log")); //$NON-NLS-1$
 			
 		}catch(IOException e){
 			
@@ -774,8 +617,8 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 	
 	/**
 	 * Entry point for Manual Sender
-	 * @param args 8 arguments expected:
-	 *   DB_HOST DB_USER DB_PASS DBASE MAIL_HOST MAIL_USER MAIL_PASS \ 
+	 * @param args 10 arguments expected:
+	 *   DB_HOST DB_USER DB_PASS DBASE \ 
 	 *   EMAIL_STORE_PATH SEND_EMAIL_HOST SEND_EMAIL_USER SEND_EMAIL_PASS \
 	 *   TEMPLATE_PATH [DEBUG]
 	 */
@@ -783,14 +626,13 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 		
 		boolean debug = false;
 		
-		if(args.length == 13)
+		if(args.length == 10)
 			debug = true;
 		
-		if(args.length == 12 || args.length == 13){
+		if(args.length == 9 || args.length == 10){
 			
 			ManualSender manual = new ManualSender(args[0], args[1], args[2],
-					args[3], args[4], args[5], args[6], args[7], args[8], 
-					args[9], args[10], args[11], debug);
+					args[3], args[4], args[5], args[6], args[7], args[8], debug);
 			
 			if(!manual.isValidArchive()){
 				
@@ -800,35 +642,11 @@ public class ManualSender extends MessageArchiver implements EmailReader{
 				
 			}
 			
-			LOGGER.info("ManualSender: Started on inbox " + args[5]); //$NON-NLS-1$
+			LOGGER.info("ManualSender: Started"); //$NON-NLS-1$
 				
-			boolean go = true;
-			
-			while(go){
-				
-				try {
-					
-					manual.getEmails();
-					
-					if(manual.isDatabaseConnected())
-						manual.disconnectFromDB();
-					
-					LOGGER.finest("ManualSender: Sleeping for " + CHECK_PERIOD); //$NON-NLS-1$
-					sleep(1000 * CHECK_PERIOD);
-					
-				} catch (InterruptedException e) {
-					
-					LOGGER.info("ManualSender: Interrupted, exiting"); //$NON-NLS-1$
-					e.printStackTrace();
-					go = false;
-					
-				} finally {
-					
-					manual.disconnectFromDB();
-					
-				}
-				
-			}
+			manual.connectToDB();
+			manual.getEmails();
+			manual.disconnectFromDB();
 			
 		}else{
 			
