@@ -22,7 +22,9 @@
     <title>CRS | Admin - Templates</title>
     <link rel="stylesheet" type="text/css" href="../css/crs.css">
     <link rel="stylesheet" type="text/css" href="../css/menu.css">
-    <script type="text/javascript" src="includes/jquery-2.1.1.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="../includes/jquery-ui.min.css">
+    <script type="text/javascript" src="../includes/jquery-2.1.1.min.js"></script>
+    <script type="text/javascript" src="../includes/jquery-ui.min.js"></script>
     <script type="text/javascript">
 
     //JQuery for datepicker
@@ -37,7 +39,7 @@
   </head>
   <body>
     <div id="template_select">
-      <form action="edittemplate.php" method="post">
+      <form action="templates.php" method="post">
         <label for="date">Select Date:</label>
         <input class="date" id="date" name="date" type="text" value="" />
         <label for="template">Template:</label>
@@ -99,6 +101,10 @@
         ?>
       </table>
     </div>
+    <div id="edittemplate">
+      
+    
+    </div>
     <div id="spacer"></div>
     <div id="footer">
       <ul id="footer_menu"><!-- Menu Root -->
@@ -118,7 +124,7 @@
                 <li><a href="#">Roles</a></li>
               <?php } ?>
               <?php if(canEditTemplates()){ ?>
-                <li><a href="admin/templates.php">Templates</a></li>
+                <li><a href="templates.php">Templates</a></li>
               <?php } ?>
             </ul>
           </li>
