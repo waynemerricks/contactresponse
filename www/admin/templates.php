@@ -52,7 +52,7 @@
           <?php }?>
         </select>
         <label for="templatetype">Type:</label>
-        <select id="template" name="template">
+        <select id="templatetype" name="templatetype">
           <option value="All">All</option>
           <option value="Email">Email</option>
           <option value="SMS">SMS</option>
@@ -121,13 +121,56 @@
       ?>
       <p><strong><?php echo $templateLabel; ?></strong></p>
       
+      <?php 
       
+        $templateLoop = $templates;
+        
+      	if(isset($_POST['template']) && $_POST['template'] != 'All'){
+      		
+      		$templateLoop[$_POST['template']] = $templates[$_POST['template']];
+      		
+      	}
+      	
+      	$types = array();
+      	$types[] = 'email';
+      	$types[] = 'sms';
+      	
+      	if(isset($_POST['templatetype'])  && $_POST['templatetype'] != 'All'){
+      		
+      		$types = array();
+      		$types[] = lcase($_POST['templatetype']); 
+      		
+      	}
+      	
+      	if(isset($_POST['date']) && strlen($_POST['date']) > 0){
+      		
+      		
+      		
+      	}
+      	
+      	foreach($templateLoop as $label => $id){
+      		
+      		for($i = 0; $i < sizeof($languages); $i++)
+      			for($j = 0; $j < sizeof($types); $j++){
+      			
+      				$editTemplate = getEditTemplates($id, $types[$j], $languages[$i], $date);
+      				
+      				//TODO display this
+      				echo $editTemplate['content']['body'] . '<br><br>';
+      				
+      			}
+      		
+      	}
+	      	
+      	
+      
+      ?>
 
     </div>
     <div id="spacer"></div>
     <div id="footer">
       <ul id="footer_menu"><!-- Menu Root -->
-        <li class="buttons homeButton"><a href="main.php"></a></li>
+        <li class="buttons homeButton"><a href="../main.php"></a></li>
         <li class="buttons contactButton"><a href="contacts.php"></a></li>
         <li><a href="#"><?php echo getUsersName(); ?></a>
         <?php if(isAdmin()){ ?>

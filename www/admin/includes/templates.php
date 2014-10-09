@@ -186,26 +186,36 @@
   	
   }
   
-  function getEditTemplateBox($id, $type, $language, $date){
+  /**
+   * 
+   * @param unknown_type $id
+   * @param unknown_type $type
+   * @param unknown_type $language
+   * @param unknown_type $date
+   * @return multitype:string NULL
+   */
+  function getEditTemplates($id, $type, $language, $date){
   	
-  	$templateContent = '';
+  	$template = array();
   	
-  	if(checkTemplateExists($id, $type, $language, $date){
+  	$templateFile = $id . '_' . $type;
+  		
+  	if(strlen($language) > 0)
+  		$templateFile .= '_' . $language;
+  		
+  	if(strlen($date) > 0)
+  		$templateFile = $date . '-' . $templateFile;
+  	
+  	$template['file'] = $templateFile;
+  	
+  	if(checkTemplateExists($id, $type, $language, $date)){
   		
   		//Get the template content from file
-  		$templateFile = $id . '_' . $type;
-  		 
-  		if(strlen($language) > 0)
-  			$templateFile .= '_' . $language;
-  		 
-  		if(strlen($date) > 0)
-  			$templateFile = $date . '-' . $templateFile;
-  		
-  		$templateContent = getTemplate($templateFile);
+  		$template['content'] = getTemplate($templateFile);
   		
   	}
   	
-  	//TODO HTML To display this + the wysiwyg editor
+  	return $template;
   	
   }
   
